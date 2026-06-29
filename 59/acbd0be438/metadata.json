@@ -5,7 +5,10 @@
   "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
-    "deploy/docker-compose.prod.yml"
+    ".github/workflows/release.yml",
+    "deploy/docker-compose.prod.yml",
+    "site/Dockerfile",
+    "site/next.config.ts"
   ],
   "sessions": [
     {
@@ -17,10 +20,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 533,
-    "cache_creation_tokens": 4039,
-    "cache_read_tokens": 2575248,
-    "output_tokens": 5242,
-    "api_call_count": 5
+    "input_tokens": 4126,
+    "cache_creation_tokens": 65790,
+    "cache_read_tokens": 19368918,
+    "output_tokens": 53137,
+    "api_call_count": 35
   }
 }

@@ -199,3 +199,15 @@ quick cloudflared now
 
 in dokploy what should i add as port? remove additional dockflare issues, the vps runs daemon for cloudflare tunnel , creaet one for tiny as well similarly and i've added cname, just tell me port to set in dokploy
 
+### Prompt 45
+
+add ingress rule yourself. ill add port in dokploy
+
+### Prompt 46
+
+yes add the systemd service
+
+### Prompt 47
+
+https://tiny.ravencloak.org/ still gives a 404, is the website not deployed?
+
