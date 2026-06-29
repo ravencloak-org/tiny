@@ -20,13 +20,13 @@ import (
 // path (ADR 0018), and connector tables are pulled by ClickHouse, never ingested
 // through the Gatherer, so a quarantine table would misrepresent the data path.
 func (c *Client) EnsureTable(ctx context.Context, ds *model.Datasource) error {
-	if _, err := c.Query(ctx, buildCreateTable(ds.Name, ds), nil, nil); err != nil {
+	if err := c.exec(ctx, buildCreateTable(ds.Name, ds)); err != nil {
 		return fmt.Errorf("create table %s: %w", ds.Name, err)
 	}
 	if engineFamily(ds.Engine) != familyMergeTree {
 		return nil
 	}
-	if _, err := c.Query(ctx, buildQuarantineTable(ds), nil, nil); err != nil {
+	if err := c.exec(ctx, buildQuarantineTable(ds)); err != nil {
 		return fmt.Errorf("create quarantine table %s: %w", ds.QuarantineTable(), err)
 	}
 	return nil
@@ -286,10 +286,59 @@ func (c *Client) CreateDatabase(ctx context.Context, name string) error {
 		return fmt.Errorf("clickhouse: CreateDatabase requires a name")
 	}
 	sql := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", ident(name))
-	if _, err := c.Query(ctx, sql, nil, nil); err != nil {
+	if err := c.exec(ctx, sql); err != nil {
 		return fmt.Errorf("create database %s: %w", name, err)
 	}
 	return nil
+}
+
+// EnsureReadonlyUser provisions the dedicated read-only ClickHouse identity that
+// the HTTP read path (/v0/sql, pipe queries) authenticates as (ADR 0011). It runs
+// as the read-write/admin user (via exec). Idempotent: re-running converges to
+// the same state and keeps the password in sync with config.
+//
+// It issues two statements (the HTTP interface runs one statement per request,
+// so they cannot be combined):
+//
+//	CREATE USER OR REPLACE `<name>` IDENTIFIED BY '<password>' SETTINGS readonly = 2
+//	GRANT SELECT ON *.* TO `<name>`
+//
+// readonly=2 (not the stock `readonly` profile, which is readonly=1) is the
+// deliberate choice from ADR 0011: it refuses writes, DDL and settings *injection*
+// while still letting the query layer forward per-query settings (resource caps,
+// query cache) as URL args — readonly=1 would reject those. A user under
+// readonly=2 also cannot lower its own readonly value, so the guard can't be
+// turned off from a query. GRANT SELECT gives the SELECT privilege the fresh user
+// otherwise lacks under RBAC; readonly=2 is an orthogonal layer that still blocks
+// writes even if broader privileges were ever granted (defence in depth).
+//
+// ponytail: resource caps (max_result_rows / max_execution_time; ADR 0025/0011)
+// are NOT baked into this user. They stay per-query, forwarded through Query's
+// settings map by the pipe/sql layer, so caps can vary per endpoint without
+// reprovisioning the user. Bake them onto the user here (SETTINGS ... = N) only if
+// a hard, query-independent ceiling is ever wanted.
+func (c *Client) EnsureReadonlyUser(ctx context.Context, name, password string) error {
+	if name == "" {
+		return fmt.Errorf("clickhouse: EnsureReadonlyUser requires a name")
+	}
+	for _, stmt := range readonlyUserStmts(name, password) {
+		if err := c.exec(ctx, stmt); err != nil {
+			return fmt.Errorf("ensure readonly user %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// readonlyUserStmts builds the (CREATE USER, GRANT SELECT) statement pair for
+// EnsureReadonlyUser. Factored out so the exact SQL is unit-testable without a
+// ClickHouse. The name is backtick-quoted (ident) and the password is rendered as
+// an escaped single-quoted literal (sqlStringLit) so quotes can't break the DDL.
+func readonlyUserStmts(name, password string) []string {
+	return []string{
+		fmt.Sprintf("CREATE USER OR REPLACE %s IDENTIFIED BY %s SETTINGS readonly = 2",
+			ident(name), sqlStringLit(password)),
+		fmt.Sprintf("GRANT SELECT ON *.* TO %s", ident(name)),
+	}
 }
 
 // CreateMaterializedView creates an incremental MV that writes into an existing
@@ -311,7 +360,7 @@ func (c *Client) CreateMaterializedView(ctx context.Context, m *model.Materializ
 	}
 	sql := fmt.Sprintf("CREATE MATERIALIZED VIEW IF NOT EXISTS %s TO %s AS %s",
 		ident(m.Name), ident(m.TargetTable), m.SQL)
-	if _, err := c.Query(ctx, sql, nil, nil); err != nil {
+	if err := c.exec(ctx, sql); err != nil {
 		return fmt.Errorf("create materialized view %s: %w", m.Name, err)
 	}
 	return nil
@@ -325,7 +374,7 @@ func (c *Client) ExchangeTables(ctx context.Context, a, b string) error {
 		return fmt.Errorf("clickhouse: ExchangeTables requires two table names")
 	}
 	sql := fmt.Sprintf("EXCHANGE TABLES %s AND %s", ident(a), ident(b))
-	if _, err := c.Query(ctx, sql, nil, nil); err != nil {
+	if err := c.exec(ctx, sql); err != nil {
 		return fmt.Errorf("exchange tables %s <-> %s: %w", a, b, err)
 	}
 	return nil
@@ -339,7 +388,7 @@ func (c *Client) CreateShadowTable(ctx context.Context, ds *model.Datasource, sh
 	if shadowName == "" {
 		return fmt.Errorf("clickhouse: CreateShadowTable requires a shadow name")
 	}
-	if _, err := c.Query(ctx, buildCreateTable(shadowName, ds), nil, nil); err != nil {
+	if err := c.exec(ctx, buildCreateTable(shadowName, ds)); err != nil {
 		return fmt.Errorf("create shadow table %s: %w", shadowName, err)
 	}
 	return nil
@@ -365,7 +414,7 @@ func (c *Client) Backfill(ctx context.Context, dst, src string, cols []string) e
 	}
 	cs := strings.Join(list, ", ")
 	sql := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s", ident(dst), cs, cs, ident(src))
-	if _, err := c.Query(ctx, sql, nil, nil); err != nil {
+	if err := c.exec(ctx, sql); err != nil {
 		return fmt.Errorf("backfill %s from %s: %w", dst, src, err)
 	}
 	return nil
@@ -378,7 +427,7 @@ func (c *Client) DropTable(ctx context.Context, name string) error {
 		return fmt.Errorf("clickhouse: DropTable requires a name")
 	}
 	sql := fmt.Sprintf("DROP TABLE IF EXISTS %s", ident(name))
-	if _, err := c.Query(ctx, sql, nil, nil); err != nil {
+	if err := c.exec(ctx, sql); err != nil {
 		return fmt.Errorf("drop table %s: %w", name, err)
 	}
 	return nil

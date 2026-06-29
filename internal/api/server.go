@@ -31,6 +31,8 @@ type Deps struct {
 	RateLimit         func(http.Handler) http.Handler   // per-token limiter on pipes (ADR 0015)
 	OpenAPI           func() []byte                     // GET /v0/openapi.json (ADR 0017)
 	IngestObserver    func(successful, quarantined int) // events -> metrics hook
+	DocsUI            http.Handler                      // /tr/v1/docs page (ADR 0017)
+	DocsEnabled       bool                              // serve the docs UI (off by default)
 
 	// MaxCompressedBytes caps the on-the-wire request body (ADR 0023). 0 -> 10MB.
 	MaxCompressedBytes int64
@@ -63,6 +65,14 @@ func New(deps Deps) http.Handler {
 	r.Get("/health/ready", s.handleReadiness)
 	if deps.MetricsHandler != nil {
 		r.Handle("/v0/metrics", deps.MetricsHandler)
+	}
+
+	// /tr/v1 — TinyRaven-native namespace (ADR 0029). Docs UI is off by default
+	// (ADR 0017); when on, the UI + an unauthenticated spec it can fetch are
+	// served here (the /v0 spec stays bearer-gated for API clients).
+	if deps.DocsEnabled && deps.DocsUI != nil && deps.OpenAPI != nil {
+		r.Handle("/tr/v1/docs", deps.DocsUI)
+		r.Get("/tr/v1/openapi.json", s.handleOpenAPI)
 	}
 
 	// /v0 — frozen Tinybird mirror (ADR 0029), behind bearer auth.

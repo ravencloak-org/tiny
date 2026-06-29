@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TinyRaven API Docs</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --get: #3fb950;
+      --post: #d29922;
+      --req: #f85149;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    header h1 { margin: 0; font-size: 20px; }
+    header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    header .sub code { font-family: var(--mono); color: var(--accent); }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 32px 64px; }
+    .op {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    .op-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+    }
+    .method {
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      color: #0d1117;
+      flex-shrink: 0;
+    }
+    .method.get { background: var(--get); }
+    .method.post { background: var(--post); }
+    .path { font-family: var(--mono); font-size: 14px; word-break: break-all; }
+    .summary { color: var(--muted); font-size: 13px; margin-left: auto; text-align: right; }
+    .op-body { padding: 0 16px 16px; }
+    h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin: 16px 0 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    td.name { font-family: var(--mono); color: var(--accent); }
+    td.type { font-family: var(--mono); color: var(--muted); }
+    .req-tag { color: var(--req); font-family: var(--mono); font-size: 11px; }
+    .opt-tag { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    pre {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      margin: 4px 0;
+    }
+    .resp-code { font-family: var(--mono); font-weight: 700; color: var(--get); }
+    .resp-desc { color: var(--muted); font-size: 13px; }
+    .status { padding: 32px; text-align: center; color: var(--muted); }
+    .status.err { color: var(--req); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="title">TinyRaven API Docs</h1>
+    <div class="sub">Rendered live from <code>/tr/v1/openapi.json</code></div>
+  </header>
+  <main id="root">
+    <div class="status">Loading spec from <code>/tr/v1/openapi.json</code>&hellip;</div>
+  </main>
+
+  <script>
+    "use strict";
+
+    const root = document.getElementById("root");
+
+    function el(tag, attrs, children) {
+      const node = document.createElement(tag);
+      if (attrs) for (const k in attrs) {
+        if (k === "class") node.className = attrs[k];
+        else if (k === "text") node.textContent = attrs[k];
+        else node.setAttribute(k, attrs[k]);
+      }
+      if (children) for (const c of children) if (c) node.appendChild(c);
+      return node;
+    }
+
+    // Render a schema as a compact, indented JSON-ish shape.
+    function schemaText(s, depth) {
+      depth = depth || 0;
+      if (!s || typeof s !== "object") return "any";
+      if (s.type === "object" && s.properties) {
+        const pad = "  ".repeat(depth + 1);
+        const lines = Object.keys(s.properties).map(
+          (k) => pad + k + ": " + schemaText(s.properties[k], depth + 1)
+        );
+        return "{\n" + lines.join(",\n") + "\n" + "  ".repeat(depth) + "}";
+      }
+      if (s.type === "array") return schemaText(s.items, depth) + "[]";
+      let t = s.type || "any";
+      if (s.format) t += " (" + s.format + ")";
+      return t;
+    }
+
+    function renderParams(params) {
+      const rows = params.map((p) =>
+        el("tr", null, [
+          el("td", { class: "name", text: p.name }),
+          el("td", { class: "type", text: schemaText(p.schema) }),
+          el("td", null, [
+            el("span", {
+              class: p.required ? "req-tag" : "opt-tag",
+              text: p.required ? "required" : "optional",
+            }),
+          ]),
+          el("td", { class: "type", text: p.in || "" }),
+        ])
+      );
+      return el("table", null, [
+        el("thead", null, [
+          el("tr", null, [
+            el("th", { text: "Name" }),
+            el("th", { text: "Type" }),
+            el("th", { text: "" }),
+            el("th", { text: "In" }),
+          ]),
+        ]),
+        el("tbody", null, rows),
+      ]);
+    }
+
+    function renderResponses(responses) {
+      const out = [];
+      Object.keys(responses).sort().forEach((code) => {
+        const r = responses[code] || {};
+        out.push(
+          el("div", null, [
+            el("span", { class: "resp-code", text: code }),
+            el("span", { class: "resp-desc", text: "  " + (r.description || "") }),
+          ])
+        );
+        const media = r.content && r.content["application/json"];
+        if (media && media.schema) {
+          out.push(el("pre", { text: schemaText(media.schema) }));
+        }
+      });
+      return out;
+    }
+
+    function renderOperation(path, method, op) {
+      const head = el("div", { class: "op-head" }, [
+        el("span", { class: "method " + method, text: method }),
+        el("span", { class: "path", text: path }),
+        op.summary ? el("span", { class: "summary", text: op.summary }) : null,
+      ]);
+      const body = el("div", { class: "op-body" }, []);
+      if (op.parameters && op.parameters.length) {
+        body.appendChild(el("h3", { text: "Parameters" }));
+        body.appendChild(renderParams(op.parameters));
+      }
+      if (op.responses) {
+        body.appendChild(el("h3", { text: "Responses" }));
+        renderResponses(op.responses).forEach((n) => body.appendChild(n));
+      }
+      return el("div", { class: "op" }, [head, body]);
+    }
+
+    function render(spec) {
+      root.innerHTML = "";
+      if (spec.info && spec.info.title) {
+        document.getElementById("title").textContent =
+          spec.info.title + (spec.info.version ? " (" + spec.info.version + ")" : "");
+      }
+      const paths = spec.paths || {};
+      const sorted = Object.keys(paths).sort();
+      if (!sorted.length) {
+        root.appendChild(el("div", { class: "status", text: "No paths in spec." }));
+        return;
+      }
+      sorted.forEach((path) => {
+        const item = paths[path];
+        ["get", "post"].forEach((m) => {
+          if (item[m]) root.appendChild(renderOperation(path, m, item[m]));
+        });
+      });
+    }
+
+    fetch("/tr/v1/openapi.json", { headers: { Accept: "application/json" } })
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(render)
+      .catch((err) => {
+        root.innerHTML = "";
+        root.appendChild(
+          el("div", { class: "status err" }, [
+            el("div", { text: "Failed to load /tr/v1/openapi.json: " + err.message }),
+          ])
+        );
+      });
+  </script>
+</body>
+</html>

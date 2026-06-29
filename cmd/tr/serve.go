@@ -58,9 +58,19 @@ func runServe(ctx context.Context, cfg config.Config) error {
 		Database:   cfg.CHDatabase,
 		User:       cfg.CHUser,
 		Password:   cfg.CHPassword,
+		ROUser:     cfg.CHROUser,
+		ROPassword: cfg.CHROPassword,
 	})
 	if err != nil {
 		return err
+	}
+	// Provision the read-only user before serving (Ping/readiness use it; ADR 0011).
+	if cfg.CHROUser != "" {
+		if err := ch.EnsureReadonlyUser(ctx, cfg.CHROUser, cfg.CHROPassword); err != nil {
+			log.Warn("could not ensure read-only CH user", "err", err)
+		} else {
+			log.Info("ensured read-only ClickHouse user", "user", cfg.CHROUser)
+		}
 	}
 
 	// Registries + subsystems.
@@ -104,9 +114,16 @@ func runServe(ctx context.Context, cfg config.Config) error {
 			SQLProxy:          sqlproxy.New(ch),
 			MetricsHandler:    mx.Handler(),
 			MetricsMiddleware: mx.Middleware,
-			RateLimit:         ratelimit.PerToken(cfg.PipeRateLimit),
-			OpenAPI:           func() []byte { return openapi.Generate(pipeReg.List()) },
-			IngestObserver:    mx.IngestObserved,
+			RateLimit: ratelimit.PerPipe(cfg.PipeRateLimit, func(p string) int {
+				if pp, ok := pipeReg.Get(p); ok && pp.Endpoint != nil {
+					return pp.Endpoint.RateLimit // per-pipe RATE_LIMIT overrides default (ADR 0015)
+				}
+				return 0
+			}),
+			OpenAPI:        func() []byte { return openapi.Generate(pipeReg.List()) },
+			IngestObserver: mx.IngestObserved,
+			DocsUI:         api.DocsHandler(),
+			DocsEnabled:    cfg.DocsEnabled,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

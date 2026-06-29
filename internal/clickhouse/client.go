@@ -30,6 +30,15 @@ type Config struct {
 	Database   string // target database
 	User       string
 	Password   string
+
+	// ROUser/ROPassword are the dedicated read-only identity (readonly=2;
+	// ADR 0011). When set, the HTTP read path (Query) authenticates as this user
+	// so ClickHouse structurally refuses writes, DDL and settings injection from
+	// /v0/sql and pipe queries. When empty, the read path falls back to
+	// User/Password — backward-compatible, no behaviour change. Writes (native
+	// Insert) and DDL always use User/Password regardless.
+	ROUser     string
+	ROPassword string
 }
 
 // Client talks to one ClickHouse instance/database over both transports.
@@ -38,8 +47,13 @@ type Client struct {
 	db       string
 	user     string
 	password string
-	http     *http.Client
-	conn     driver.Conn // native; nil when NativeAddr is empty
+	// Read-only identity for the HTTP read path (ADR 0011); empty -> fall back
+	// to user/password. Writes (native Insert) and DDL ignore these and always
+	// authenticate as user/password.
+	roUser     string
+	roPassword string
+	http       *http.Client
+	conn       driver.Conn // native; nil when NativeAddr is empty
 }
 
 // CHError carries a ClickHouse exception code (X-ClickHouse-Exception-Code) so
@@ -55,10 +69,12 @@ func (e *CHError) Error() string { return fmt.Sprintf("clickhouse exception %d: 
 // here), so New only fails on bad options; readiness is probed via Ping.
 func New(cfg Config) (*Client, error) {
 	c := &Client{
-		httpURL:  strings.TrimRight(cfg.HTTPURL, "/"),
-		db:       cfg.Database,
-		user:     cfg.User,
-		password: cfg.Password,
+		httpURL:    strings.TrimRight(cfg.HTTPURL, "/"),
+		db:         cfg.Database,
+		user:       cfg.User,
+		password:   cfg.Password,
+		roUser:     cfg.ROUser,
+		roPassword: cfg.ROPassword,
 		// Tuned transport: keep many idle keep-alive connections to ClickHouse so
 		// concurrent pipe queries reuse them instead of dialing per request (the
 		// default MaxIdleConnsPerHost=2 thrashes connections + adds latency/errors
@@ -109,9 +125,42 @@ func (c *Client) Close() error {
 }
 
 // Query runs sql over the HTTP interface and returns the response body verbatim
-// (ADR 0013). params (already prefixed param_<name> by the caller) and settings
-// are forwarded as URL query args; the target db and credentials come from cfg.
+// (ADR 0013). It is the read path — /v0/sql and pipe queries — so it
+// authenticates as the read-only identity when one is configured (readonly=2;
+// ADR 0011), guaranteeing ClickHouse refuses writes/DDL no matter what SQL
+// arrives. params (already prefixed param_<name> by the caller) and settings are
+// forwarded as URL query args; the target db comes from cfg.
 func (c *Client) Query(ctx context.Context, sql string, params, settings map[string]string) ([]byte, error) {
+	user, password := c.readCreds()
+	return c.httpQuery(ctx, sql, params, settings, user, password)
+}
+
+// exec runs a DDL/write statement (CREATE/DROP/EXCHANGE/INSERT ... SELECT, user
+// provisioning) over HTTP as the read-write user, never the read-only identity:
+// readonly=2 would reject these. It discards the body — DDL has none worth
+// keeping (ADR 0011).
+func (c *Client) exec(ctx context.Context, sql string) error {
+	_, err := c.httpQuery(ctx, sql, nil, nil, c.user, c.password)
+	return err
+}
+
+// readCreds returns the identity for the HTTP read path: the read-only user when
+// configured, otherwise the read-write user (backward-compatible fallback).
+func (c *Client) readCreds() (user, password string) {
+	if c.roUser != "" {
+		return c.roUser, c.roPassword
+	}
+	return c.user, c.password
+}
+
+// httpQuery is the shared HTTP transport for both read and DDL paths; the caller
+// passes the identity to authenticate as.
+//
+// ponytail: one *Client and one *http.Client are kept; the read/write identity
+// split is per-request auth headers (X-ClickHouse-User/-Key), not a second
+// client. Headers carry no cross-request state, so sharing the connection pool
+// between RO and RW requests is safe and keeps the tuned keep-alive pool whole.
+func (c *Client) httpQuery(ctx context.Context, sql string, params, settings map[string]string, user, password string) ([]byte, error) {
 	u, err := url.Parse(c.httpURL)
 	if err != nil {
 		return nil, err
@@ -130,9 +179,9 @@ func (c *Client) Query(ctx context.Context, sql string, params, settings map[str
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("X-ClickHouse-User", c.user)
-	if c.password != "" {
-		req.Header.Set("X-ClickHouse-Key", c.password)
+	req.Header.Set("X-ClickHouse-User", user)
+	if password != "" {
+		req.Header.Set("X-ClickHouse-Key", password)
 	}
 
 	resp, err := c.http.Do(req)

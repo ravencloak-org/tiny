@@ -27,6 +27,9 @@ type Config struct {
 	ProjectDir    string // dir holding .datasource/.pipe files
 	AdminToken    string // bootstrap ADMIN token; empty disables bootstrap
 	PipeRateLimit int    // per-token req/s on /v0/pipes (ADR 0015); 0 disables
+	CHROUser      string // dedicated read-only CH user for reads (ADR 0011); empty = use CHUser
+	CHROPassword  string
+	DocsEnabled   bool // serve /tr/v1/docs (ADR 0017); off by default
 
 	// Client-facing config, Tinybird-compatible (read from config.yml / env).
 	Host      string // API host the `tr` CLI talks to, e.g. "http://localhost:8000"
@@ -64,6 +67,9 @@ func Load() Config {
 		ProjectDir:    env("TR_PROJECT_DIR", "."),
 		AdminToken:    env("TR_ADMIN_TOKEN", ""),
 		PipeRateLimit: envInt("TR_PIPE_RATE_LIMIT", 100),
+		CHROUser:      env("TR_CLICKHOUSE_RO_USER", ""),
+		CHROPassword:  env("TR_CLICKHOUSE_RO_PASSWORD", ""),
+		DocsEnabled:   os.Getenv("TR_DOCS_ENABLED") == "true",
 
 		Host:      "http://localhost:8000",
 		Token:     "",

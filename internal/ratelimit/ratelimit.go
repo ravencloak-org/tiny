@@ -7,8 +7,10 @@ package ratelimit
 import (
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
 
 	"github.com/tinyraven/tinyraven/internal/apierr"
@@ -74,6 +76,76 @@ func PerToken(defaultRPS int, opts ...Option) func(http.Handler) http.Handler {
 			apierr.WriteError(w, http.StatusTooManyRequests, "rate limit exceeded")
 		}),
 	)
+}
+
+// PerPipe returns a chi-compatible middleware for /v0/pipes/{name}.json that
+// limits each (token, pipe) pair independently. The effective limit is the
+// pipe's own RATE_LIMIT when limitFor(pipe) > 0, otherwise defaultRPS. An
+// effective limit <= 0 means unlimited (pass-through), so a 0 default combined
+// with a 0 (or unset) pipe limit disables limiting for that pipe — matching
+// PerToken's "0 disables" rule (ADR 0015), but resolved per request so one
+// pipe can opt in to a limit while the rest stay open.
+//
+// Mount it on the group that has already matched the {name} route param;
+// chi.URLParam(r, "name") supplies the pipe name. The composite key is
+// "<token>:<pipe>", so each pair gets its own sliding window.
+//
+// ponytail: httprate's middleware bakes the request limit in at construction,
+// so a per-pipe override needs one limiter per distinct effective-rps. We keep
+// a lazily-populated map[rps]*httprate.RateLimiter (guarded by a mutex) and
+// drive the chosen limiter via its OnLimit(w, r, key) primitive with our own
+// composite key — each limiter owns its own counter, and within a limiter the
+// composite key isolates pipes/tokens. The map is bounded by the number of
+// distinct RATE_LIMIT values in use (small).
+func PerPipe(defaultRPS int, limitFor func(pipe string) int, opts ...Option) func(http.Handler) http.Handler {
+	c := &config{window: defaultWindow, keyFn: tokenKey}
+	for _, o := range opts {
+		o(c)
+	}
+	if limitFor == nil {
+		limitFor = func(string) int { return 0 }
+	}
+
+	var mu sync.Mutex
+	limiters := make(map[int]*httprate.RateLimiter)
+	limiterFor := func(rps int) *httprate.RateLimiter {
+		mu.Lock()
+		defer mu.Unlock()
+		if l, ok := limiters[rps]; ok {
+			return l
+		}
+		l := httprate.NewRateLimiter(rps, c.window)
+		limiters[rps] = l
+		return l
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			pipe := chi.URLParam(r, "name")
+
+			eff := defaultRPS
+			if pl := limitFor(pipe); pl > 0 {
+				eff = pl
+			}
+			if eff <= 0 { // unlimited for this pipe
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			key, err := c.keyFn(r)
+			if err != nil {
+				// Can't identify the caller: bound all such requests together
+				// rather than letting them bypass the limit.
+				key = "err"
+			}
+
+			if limiterFor(eff).OnLimit(w, r, key+":"+pipe) {
+				apierr.WriteError(w, http.StatusTooManyRequests, "rate limit exceeded")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // tokenKey keys on the authenticated bearer token without depending on
