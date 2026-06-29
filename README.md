@@ -51,29 +51,9 @@ tr deploy        # same .datasource / .pipe files, your backend
 
 ## Architecture
 
-```
-                    POST /v0/events
-                          │
-                          ▼
-                  ┌───────────────┐   flush on max(N events, 5s)
-   clients ──────▶│   Gatherer    │──────────────────────────────┐
-                  │ (goroutine +  │                               ▼
-                  │   channel)    │                        ┌─────────────┐
-                  └───────────────┘                        │  ClickHouse │
-                                                           │   (OSS)     │
-   GET /v0/pipes/{name}.json                               └─────────────┘
-            │                                                     ▲
-            ▼                                                     │
-   parse {{Type(...)}} ─▶ validate/escape ─▶ ClickHouse HTTP ─────┘
-                                              FORMAT JSON / JSONEachRow
-```
+`POST /v0/events` batches through an in-process **Gatherer** into ClickHouse; `GET /v0/pipes/{name}.json` parses the `{{Type(...)}}` template, binds params as ClickHouse query parameters, and streams the result. **ClickHouse** holds event data, materialized views, and query execution; **Redis** holds the metadata registry (datasource/pipe definitions, tokens, deploy state) plus hot cache, AOF-persisted as a system of record. Branching = one ClickHouse database per git branch (`tr_{branch}`).
 
-| Store | Role |
-|-------|------|
-| **ClickHouse** | Event data, materialized views, query execution, `tinybird.pipe_stats` |
-| **Redis** | Metadata registry (datasource + pipe definitions, tokens, deploy state) **and** hot cache / rate-limit counters. Runs AOF-persisted as a system of record. |
-
-**Branching:** one ClickHouse database per git branch (`tr_{branch}`). `tr deploy` detects the current branch and targets the matching database. Breaking migrations use shadow table → MV backfill → atomic `EXCHANGE TABLES`.
+Full data flow, the deps table, and every locked decision live in **[PROMPT.md](PROMPT.md)** and the [ADRs](docs/adr/) — the spec, not duplicated here.
 
 ## Quickstart (planned)
 
