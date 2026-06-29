@@ -1,7 +1,7 @@
 // Package api is the HTTP layer: chi router, request/response glue, and
-// middleware. It depends only on the model interfaces, so the gatherer, pipe,
-// clickhouse and auth implementations can be developed independently and wired
-// in at startup.
+// middleware. It depends only on the model interfaces and a few injected
+// http.Handlers/middlewares, so the subsystem implementations can be developed
+// independently and wired in at startup.
 package api
 
 import (
@@ -14,13 +14,23 @@ import (
 	"github.com/tinyraven/tinyraven/internal/model"
 )
 
-// Deps are the concrete subsystem implementations the HTTP layer drives.
+// Deps are the concrete subsystem implementations the HTTP layer drives. The
+// http.Handler / middleware / func fields are optional (nil-checked) so the
+// server degrades gracefully if a piece isn't wired.
 type Deps struct {
 	Ingester  model.Ingester   // POST /v0/events
 	Pipes     model.PipeRunner // GET  /v0/pipes/{name}.json
 	Tokens    model.TokenStore // auth middleware
 	RedisPing model.Pinger     // readiness
 	CHPing    model.CHPinger   // readiness
+
+	// Phase 2 add-ons (optional).
+	SQLProxy          http.Handler                      // GET/POST /v0/sql (ADR 0011)
+	MetricsHandler    http.Handler                      // GET /v0/metrics (Prometheus)
+	MetricsMiddleware func(http.Handler) http.Handler   // per-request metrics
+	RateLimit         func(http.Handler) http.Handler   // per-token limiter on pipes (ADR 0015)
+	OpenAPI           func() []byte                     // GET /v0/openapi.json (ADR 0017)
+	IngestObserver    func(successful, quarantined int) // events -> metrics hook
 
 	// MaxCompressedBytes caps the on-the-wire request body (ADR 0023). 0 -> 10MB.
 	MaxCompressedBytes int64
@@ -44,17 +54,40 @@ func New(deps Deps) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.Recoverer)
+	if deps.MetricsMiddleware != nil {
+		r.Use(deps.MetricsMiddleware)
+	}
 
-	// Health is unauthenticated (ADR 0024).
+	// Unauthenticated: health (ADR 0024) + metrics scrape endpoint.
 	r.Get("/health", s.handleLiveness)
 	r.Get("/health/ready", s.handleReadiness)
+	if deps.MetricsHandler != nil {
+		r.Handle("/v0/metrics", deps.MetricsHandler)
+	}
 
 	// /v0 — frozen Tinybird mirror (ADR 0029), behind bearer auth.
 	r.Route("/v0", func(r chi.Router) {
 		r.Use(s.authMiddleware)
 		r.Post("/events", s.handleEvents)
-		r.Get("/pipes/{name}.json", s.handlePipe)
+		if deps.SQLProxy != nil {
+			r.Handle("/sql", deps.SQLProxy) // GET + POST (ADR 0011)
+		}
+		if deps.OpenAPI != nil {
+			r.Get("/openapi.json", s.handleOpenAPI)
+		}
+		// Pipe reads carry the per-token rate limiter (ADR 0015).
+		r.Group(func(r chi.Router) {
+			if deps.RateLimit != nil {
+				r.Use(deps.RateLimit)
+			}
+			r.Get("/pipes/{name}.json", s.handlePipe)
+		})
 	})
 
 	return r
+}
+
+// handleOpenAPI serves the runtime-generated OpenAPI spec (ADR 0017).
+func (s *server) handleOpenAPI(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, s.deps.OpenAPI())
 }

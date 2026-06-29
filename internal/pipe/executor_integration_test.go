@@ -70,7 +70,7 @@ func TestRun_Integration(t *testing.T) {
 	}
 	reg := NewRegistry()
 	reg.Put(p)
-	e := NewExecutor(ch, reg, nil)
+	e := NewExecutor(ch, reg, nil, nil)
 
 	body, status, err := e.Run(ctx, "answer", url.Values{"n": {"41"}})
 	if err != nil {

@@ -19,8 +19,18 @@ import (
 	"github.com/tinyraven/tinyraven/internal/config"
 	"github.com/tinyraven/tinyraven/internal/datasource"
 	"github.com/tinyraven/tinyraven/internal/gatherer"
+	"github.com/tinyraven/tinyraven/internal/metrics"
+	"github.com/tinyraven/tinyraven/internal/openapi"
 	"github.com/tinyraven/tinyraven/internal/pipe"
+	"github.com/tinyraven/tinyraven/internal/pipestats"
+	"github.com/tinyraven/tinyraven/internal/ratelimit"
+	"github.com/tinyraven/tinyraven/internal/sqlproxy"
 )
+
+// defaultPipeRPS is the per-token rate limit applied to pipe reads when a pipe
+// declares no RATE_LIMIT. ponytail: global default; per-pipe RATE_LIMIT + a
+// shared (httprate-redis) store are the upgrades (ADR 0015 / 0031).
+const defaultPipeRPS = 100
 
 func newServeCmd() *cobra.Command {
 	return &cobra.Command{
@@ -57,9 +67,16 @@ func runServe(ctx context.Context, cfg config.Config) error {
 	// Registries + subsystems.
 	dsReg := datasource.NewRegistry(rdb)
 	pipeReg := pipe.NewRegistry()
-	executor := pipe.NewExecutor(ch, pipeReg, dsReg)
 	gath := gatherer.New(ch, dsReg, gatherer.WithLogger(log))
 	tokens := auth.NewStore(rdb)
+
+	// Observability + add-ons (Phase 2).
+	mx := metrics.New()
+	stats := pipestats.New(ch)
+	if err := ch.EnsureTable(ctx, stats.Schema()); err != nil { // pipe_stats table (ADR 0014)
+		log.Warn("could not ensure pipe_stats table", "err", err)
+	}
+	executor := pipe.NewExecutor(ch, pipeReg, dsReg, stats)
 
 	if cfg.AdminToken != "" {
 		if err := tokens.Bootstrap(ctx, cfg.AdminToken); err != nil {
@@ -80,11 +97,17 @@ func runServe(ctx context.Context, cfg config.Config) error {
 	srv := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: api.New(api.Deps{
-			Ingester:  gath,
-			Pipes:     executor,
-			Tokens:    tokens,
-			RedisPing: tokens, // auth.Store.Ping pings Redis
-			CHPing:    ch,
+			Ingester:          gath,
+			Pipes:             executor,
+			Tokens:            tokens,
+			RedisPing:         tokens, // auth.Store.Ping pings Redis
+			CHPing:            ch,
+			SQLProxy:          sqlproxy.New(ch),
+			MetricsHandler:    mx.Handler(),
+			MetricsMiddleware: mx.Middleware,
+			RateLimit:         ratelimit.PerToken(defaultPipeRPS),
+			OpenAPI:           func() []byte { return openapi.Generate(pipeReg.List()) },
+			IngestObserver:    mx.IngestObserved,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -106,6 +129,9 @@ func runServe(ctx context.Context, cfg config.Config) error {
 		defer cancel()
 		if err := gath.Close(shutdownCtx); err != nil { // drain buffered events first (ADR 0004)
 			log.Error("gatherer drain failed", "err", err)
+		}
+		if err := stats.Close(shutdownCtx); err != nil { // drain pipe_stats (ADR 0014)
+			log.Error("pipe_stats drain failed", "err", err)
 		}
 		return srv.Shutdown(shutdownCtx)
 	}

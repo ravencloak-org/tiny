@@ -50,6 +50,9 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if s.deps.IngestObserver != nil {
+		s.deps.IngestObserver(ok, quarantined)
+	}
 	encodeJSON(w, http.StatusAccepted, map[string]int{
 		"successful_rows":  ok,
 		"quarantined_rows": quarantined,

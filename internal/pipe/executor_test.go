@@ -41,6 +41,11 @@ func (r fakeRegistry) List() []*model.Pipe {
 	return out
 }
 
+// fakeRecorder captures the stats the executor emits (model.StatsRecorder).
+type fakeRecorder struct{ stats []model.QueryStat }
+
+func (r *fakeRecorder) Record(s model.QueryStat) { r.stats = append(r.stats, s) }
+
 func mustParse(t *testing.T, name, raw string) *model.Pipe {
 	t.Helper()
 	p, err := Parse(name, raw)
@@ -55,7 +60,7 @@ func newExec(ch model.CHQuerier, pipes ...*model.Pipe) *Executor {
 	for _, p := range pipes {
 		reg.m[p.Name] = p
 	}
-	return NewExecutor(ch, reg, nil) // ds registry unused by Run in MVP
+	return NewExecutor(ch, reg, nil, nil) // ds registry + recorder unused here
 }
 
 func TestRun_RewritesPlaceholdersAndComposesCTEs(t *testing.T) {
@@ -189,5 +194,138 @@ func TestRun_ClickHouseErrorMapsTo400(t *testing.T) {
 	}
 	if string(body) != "CH: syntax error" {
 		t.Errorf("CH error body should be returned for API mapping, got %q", body)
+	}
+}
+
+// --- Task 2: full parameter types ---
+
+// TestRun_ParamTypeMapping checks each template type maps to the right
+// ClickHouse {name:Type} placeholder and that valid values bind through.
+func TestRun_ParamTypeMapping(t *testing.T) {
+	cases := []struct {
+		tmpl       string // template type, e.g. "Int64"
+		value      string
+		wantCHType string // expected {name:Type} type in SQL
+		wantBound  string // expected bound param value (after normalization)
+	}{
+		{"String", "hello", "String", "hello"},
+		{"Int64", "42", "Int64", "42"},
+		{"Int32", "-7", "Int32", "-7"},
+		{"Float64", "3.14", "Float64", "3.14"},
+		{"UUID", "123e4567-e89b-12d3-a456-426614174000", "UUID", "123e4567-e89b-12d3-a456-426614174000"},
+		{"Boolean", "true", "UInt8", "1"},
+		{"Boolean", "0", "UInt8", "0"},
+		{"DateTime", "2024-01-01 00:00:00", "DateTime", "2024-01-01 00:00:00"},
+		{"Date", "2024-01-01", "Date", "2024-01-01"},
+		{"DateTime64", "2024-01-01 00:00:00.123", "DateTime64", "2024-01-01 00:00:00.123"},
+	}
+	for _, c := range cases {
+		t.Run(c.tmpl+"="+c.value, func(t *testing.T) {
+			raw := "NODE endpoint\nSQL >\n    SELECT * FROM t WHERE x = {{" + c.tmpl + "(x)}}\nTYPE endpoint"
+			ch := &fakeCH{body: []byte("{}")}
+			e := newExec(ch, mustParse(t, "p", raw))
+
+			_, status, err := e.Run(context.Background(), "p", url.Values{"x": {c.value}})
+			if err != nil || status != http.StatusOK {
+				t.Fatalf("Run: status=%d err=%v", status, err)
+			}
+			if !strings.Contains(ch.gotSQL, "{x:"+c.wantCHType+"}") {
+				t.Errorf("SQL placeholder = %q, want {x:%s}", ch.gotSQL, c.wantCHType)
+			}
+			if ch.gotParams["param_x"] != c.wantBound {
+				t.Errorf("bound param_x = %q, want %q", ch.gotParams["param_x"], c.wantBound)
+			}
+		})
+	}
+}
+
+// TestRun_InvalidParamValues asserts a 400 (no CH call) for malformed values.
+func TestRun_InvalidParamValues(t *testing.T) {
+	cases := []struct {
+		tmpl, value, wantMsg string
+	}{
+		{"Int64", "abc", "must be an integer"},
+		{"Int32", "1.5", "must be an integer"},
+		{"Float64", "ten", "must be a number"},
+		{"Boolean", "maybe", "must be a boolean"},
+		{"UUID", "not-a-uuid", "must be a UUID"},
+		{"DateTime", "", "must not be empty"},
+	}
+	for _, c := range cases {
+		t.Run(c.tmpl+"="+c.value, func(t *testing.T) {
+			raw := "NODE endpoint\nSQL >\n    SELECT {{" + c.tmpl + "(x)}}\nTYPE endpoint"
+			ch := &fakeCH{body: []byte("{}")}
+			e := newExec(ch, mustParse(t, "p", raw))
+
+			_, status, err := e.Run(context.Background(), "p", url.Values{"x": {c.value}})
+			if status != http.StatusBadRequest || err == nil {
+				t.Fatalf("status=%d err=%v, want 400 + error", status, err)
+			}
+			if !strings.Contains(err.Error(), c.wantMsg) {
+				t.Errorf("err = %v, want substring %q", err, c.wantMsg)
+			}
+			if ch.calls != 0 {
+				t.Errorf("ClickHouse must not be queried on invalid param (calls=%d)", ch.calls)
+			}
+		})
+	}
+}
+
+// TestRun_InvalidDefaultRejected asserts defaults are validated like values.
+func TestRun_InvalidDefaultRejected(t *testing.T) {
+	raw := "NODE endpoint\nSQL >\n    SELECT {{Int64(n, 'oops')}}\nTYPE endpoint"
+	ch := &fakeCH{body: []byte("{}")}
+	e := newExec(ch, mustParse(t, "p", raw))
+
+	_, status, err := e.Run(context.Background(), "p", url.Values{})
+	if status != http.StatusBadRequest || err == nil || !strings.Contains(err.Error(), "must be an integer") {
+		t.Fatalf("status=%d err=%v, want 400 for invalid default", status, err)
+	}
+}
+
+// --- Task 3: StatsRecorder wiring ---
+
+func TestRun_RecordsStatOnSuccess(t *testing.T) {
+	raw := "NODE endpoint\nSQL >\n    SELECT 1\nTYPE endpoint"
+	ch := &fakeCH{body: []byte(`{"data":[],"rows":3,"statistics":{"rows_read":12,"bytes_read":345}}`)}
+	rec := &fakeRecorder{}
+	e := NewExecutor(ch, fakeRegistry{m: map[string]*model.Pipe{"p": mustParse(t, "p", raw)}}, nil, rec)
+
+	if _, _, err := e.Run(context.Background(), "p", url.Values{}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(rec.stats) != 1 {
+		t.Fatalf("want 1 stat emitted, got %d", len(rec.stats))
+	}
+	s := rec.stats[0]
+	if s.Pipe != "p" || s.StatusCode != http.StatusOK || s.Error != "" {
+		t.Errorf("stat = %+v, want pipe=p status=200 no-error", s)
+	}
+	if s.ReadRows != 12 || s.ReadBytes != 345 {
+		t.Errorf("stat read counters = rows %d bytes %d, want 12/345", s.ReadRows, s.ReadBytes)
+	}
+}
+
+func TestRun_RecordsStatOnError(t *testing.T) {
+	raw := "NODE endpoint\nSQL >\n    SELECT 1\nTYPE endpoint"
+	ch := &fakeCH{body: []byte("boom"), err: errors.New("clickhouse 400")}
+	rec := &fakeRecorder{}
+	e := NewExecutor(ch, fakeRegistry{m: map[string]*model.Pipe{"p": mustParse(t, "p", raw)}}, nil, rec)
+
+	if _, _, err := e.Run(context.Background(), "p", url.Values{}); err == nil {
+		t.Fatal("expected error")
+	}
+	if len(rec.stats) != 1 || rec.stats[0].StatusCode != http.StatusBadRequest || rec.stats[0].Error == "" {
+		t.Errorf("stats = %+v, want one 400 stat carrying the error", rec.stats)
+	}
+}
+
+func TestRun_NilRecorderIsSafe(t *testing.T) {
+	raw := "NODE endpoint\nSQL >\n    SELECT 1\nTYPE endpoint"
+	ch := &fakeCH{body: []byte("{}")}
+	e := NewExecutor(ch, fakeRegistry{m: map[string]*model.Pipe{"p": mustParse(t, "p", raw)}}, nil, nil)
+
+	if _, status, err := e.Run(context.Background(), "p", url.Values{}); err != nil || status != http.StatusOK {
+		t.Fatalf("Run with nil recorder: status=%d err=%v", status, err)
 	}
 }

@@ -40,17 +40,17 @@ curl "localhost:8000/v0/pipes/user_metrics.json?user_id=alice" \
 **Deliverable:** Production-ready query API + deployable project via `tr deploy`
 
 ### Must Ship
-- [ ] Full SQL param type support: `String`, `DateTime`, `Int64`, `Float64`, `UUID`, `Boolean`
-- [ ] Auto-generated OpenAPI docs from pipe registry
-- [ ] Query observability → `tinybird.pipe_stats` ClickHouse table
-- [ ] `GET /v0/metrics` → Prometheus format
-- [ ] `GET /v0/sql` → read-only ClickHouse SQL proxy
-- [ ] `tr deploy` command:
-  - Validate `.datasource` + `.pipe` files
-  - Diff schema against current ClickHouse state
-  - Apply safe migrations (`ALTER TABLE ADD COLUMN` with nullable/default)
-- [ ] Per-token rate limiting (in-memory `httprate` sliding-window, ADR 0015; `RATE_LIMIT` in `.pipe` file)
-- [ ] Tinybird-compatible error codes + JSON error shapes
+- [x] Full SQL param type support: `String`, `DateTime`, `Int64`, `Float64`, `UUID`, `Boolean` (+ Int32/Date/DateTime64)
+- [x] Auto-generated OpenAPI docs from pipe registry (ADR 0017, `/v0/openapi.json`)
+- [x] Query observability → `pipe_stats` ClickHouse table (via Gatherer-style flusher, ADR 0014)
+- [x] `GET /v0/metrics` → Prometheus format
+- [x] `GET /v0/sql` → read-only ClickHouse SQL proxy (`readonly=2`, ADR 0011)
+- [x] `tr deploy` command:
+  - [x] Validate `.datasource` + `.pipe` files
+  - [x] Diff schema against current ClickHouse state (`system.columns`)
+  - [x] Apply safe migrations (`ALTER TABLE ADD COLUMN`); breaking changes detected + refused (Phase 3, ADR 0007)
+- [x] Per-token rate limiting (in-memory `httprate` sliding-window, ADR 0015; per-pipe `RATE_LIMIT` wiring later)
+- [x] Tinybird-compatible error codes + JSON error shapes (ADR 0012, `X-DB-Exception-Code` passthrough)
 
 ### Success Criteria
 ```bash
