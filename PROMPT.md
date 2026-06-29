@@ -22,7 +22,7 @@ TinyRaven is an **open-source, self-hosted, drop-in alternative to Tinybird**, b
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
 | **Backend server** | Go (`net/http` + `chi` router) | Goroutines ideal for the Gatherer (concurrent batching), single binary, fast startup, low memory for K8s |
-| **CLI binary** | Go (same binary as server, `tr` subcommand) — `cobra` (commands) + `viper` (config: `~/.tinyraven/config.yml` ⊕ `TINYBIRD_*` env ⊕ flags) | Standard Go CLI stack (kubectl/gh/docker). OpenTUI rejected: TypeScript (breaks Go-only) and a full-screen TUI framework — `tr` is a command CLI, not a TUI. |
+| **CLI binary** | Go (same binary as server, `tr` subcommand) — `cobra` (commands) + hand-rolled config (`~/.tinyraven/config.yml` ⊕ `TINYBIRD_*` env ⊕ flags via stdlib + `yaml.v3`, no viper — ADR 0032) | Standard Go CLI stack (kubectl/gh/docker). OpenTUI rejected: TypeScript (breaks Go-only) and a full-screen TUI framework — `tr` is a command CLI, not a TUI. |
 | **Database** | ClickHouse OSS (Apache 2.0), **target 26.3 LTS** (pin `clickhouse/clickhouse-server:26.3`) | Same OLAP engine Tinybird uses, free to self-host. LTS floor lets us build on query_cache, refreshable MV, native JSON, parameterized queries. See `docs/adr/0009-clickhouse-26.3-lts-feature-baseline.md`. |
 | **Metadata store** | Redis (AOF-persisted) | Schema registry, token storage, pipe definitions, deploy state. Matches Tinybird. See `docs/adr/0001-redis-only-metadata.md`. |
 | **Cache** | Redis | Token validation cache + rate limiting only. **Query-result caching = ClickHouse native `query_cache`** (per-pipe TTL), not Redis. See `docs/adr/0009`. |
@@ -42,6 +42,8 @@ import (
 )
 ```
 
+**Deployment scope (see `docs/adr/0031-single-node-scope-no-tr-horizontal-ha.md`):** MVP is **single-node** — one `tr` process, **not** horizontally scaled behind an LB. Several decisions assume it (in-process Gatherer ADR 0004, in-memory rate-limit ADR 0015, single-Redis deploy lock ADR 0016). Scaling story = **vertical `tr` + clustered backing stores** (ClickHouse ReplicatedMergeTree + Keeper, HA Redis) behind one `tr`. Multi-node `tr` HA is out of scope; upgrade paths documented (httprate-redis, WAL, Redlock).
+
 ### Locked Dependencies (lean — prefer stdlib, reuse before reinvent)
 
 | Concern | Choice | Note |
@@ -51,10 +53,11 @@ import (
 | ClickHouse insert | `github.com/ClickHouse/clickhouse-go/v2` | Native driver. ADR 0013. |
 | ClickHouse query | stdlib `net/http` → CH HTTP 8123 | ADR 0013. |
 | Redis | `github.com/redis/go-redis/v9` | Metadata registry + hot cache. ADR 0001. |
-| CLI / config | `cobra` + `viper` | Final. |
+| CLI commands | `cobra` | Nested cmds + help/completion. |
+| Config | stdlib `flag`/`os.Getenv` + `gopkg.in/yaml.v3` | 3-source precedence hand-rolled (~20 lines), no `viper`. ADR 0032. |
 | Metrics | `github.com/prometheus/client_golang` | `/v0/metrics` exposition — never hand-format. |
 | Template control flow (Phase 2) | `github.com/expr-lang/expr` | `{% if %}` condition eval — no hand-rolled evaluator. ADR 0003. |
-| OpenAPI spec | `github.com/getkin/kin-openapi` | Runtime build from pipe registry. ADR 0017. |
+| OpenAPI spec | stdlib `encoding/json` (own OpenAPI-3 structs) | Emit-only from pipe registry — no `kin-openapi`. ADR 0017 + 0032. |
 | File watching (dev) | `github.com/fsnotify/fsnotify` | Dev-only hot reload, debounced ~300ms. ADR 0020. mtime-poll is the zero-dep fallback. |
 | Logging | stdlib `log/slog` | No zap/zerolog. |
 | JSON / NDJSON | stdlib `encoding/json` | `goccy/go-json` only if profiling demands. |
@@ -98,6 +101,8 @@ TinyRaven exposes **identical APIs** to Tinybird. Existing Tinybird client code 
 | `/health/ready` | GET | Readiness — `200`/`503` gated on Redis + ClickHouse (cached ~2–3s). ADR 0024. |
 | `/v0/metrics` | GET | Prometheus format metrics (via `prometheus/client_golang`) |
 
+**API versioning (see `docs/adr/0029-api-versioning-v0-frozen-tr-namespace-native.md`):** `/v0` is the **frozen Tinybird mirror** — never extended with TinyRaven-only routes, never bumped on our account. TinyRaven-native endpoints live under **`/tr/v1/...`** (independent version line). If Tinybird ever ships `/v1`, we add a matching `/v1` mirror; `/v0` stays frozen. Two lines: parity (`/v0`, …) tracks Tinybird, native (`/tr/vN`) is ours.
+
 ### File Format Parity
 
 `.datasource` files (see `docs/adr/0008-datasource-reject-undefined-no-schema-on-write.md`): default engine `MergeTree ORDER BY tuple()` when `ENGINE` omitted; all `ENGINE_*` forwarded to ClickHouse verbatim. Ingestion to an undefined datasource is rejected (no schema-on-write in MVP). **Validation (ADR 0027):** Go does structural + referential checks at parse/deploy time (file parses, `SCHEMA` present, sorting/partition/TTL key columns exist in `SCHEMA`); ClickHouse owns all semantic validation (types, engine params) at `CREATE TABLE`; `tr deploy` validates every file before applying any.
@@ -127,11 +132,14 @@ ENDPOINT user_stats
 TYPE query
 SQL > SELECT * FROM daily_activity WHERE user_id = {{String(user_id)}}
 RATE_LIMIT = 100
+CACHE_TTL = 60          # TinyRaven-native (not Tinybird): opt-in CH query_cache, off if absent. ADR 0009.
 
 MATERIALIZATION daily_summary
 TARGET_TABLE daily_metrics
 SQL > SELECT * FROM daily_activity
 ```
+
+**Query caching (see `docs/adr/0009-clickhouse-26.3-lts-feature-baseline.md`):** per-pipe `CACHE_TTL = <seconds>` in the ENDPOINT block → TinyRaven appends `SETTINGS use_query_cache=1, query_cache_ttl=<n>` to that pipe's CH query. **Off by default**, opt-in only. TinyRaven-native field (no Tinybird equivalent — `tb` may not parse it). CH keys on query text + param values (per-combo correct); invalidation is **time-based only** (stale up to TTL after new ingest).
 
 ### Config/Env Parity
 
@@ -145,7 +153,7 @@ tr deploy   # same project files, different backend
 **Config split (secret vs non-secret):**
 - `~/.tinyraven/config.yml` — user/home, **gitignored**. Holds the **token** and **host** (secrets + per-machine creds). Same format as `~/.tinybird/config.yml`. Shared across projects.
 - `.tr/config.yml` — project, **committed**. Holds project identity + non-secret deploy config (project name, `datasources/`/`pipes/` dirs, safe ClickHouse settings). **Never a token.**
-- Precedence (viper): flag > `TINYBIRD_*` env > `.tr/config.yml` > `~/.tinyraven/config.yml` > defaults. Token resolves from env > user file only (never the committed project file).
+- Precedence (hand-rolled, no viper — ADR 0032): flag > `TINYBIRD_*` env > `.tr/config.yml` > `~/.tinyraven/config.yml` > defaults. Token resolves from env > user file only (never the committed project file).
 - `tr init` writes a `.gitignore` guarding any local secret file.
 
 ---
@@ -192,7 +200,7 @@ type Gatherer struct {
 - Static/admin tokens never expire (TTL only on cache + short-lived client tokens).
 - Bootstrap: auto-generate `ADMIN` token on first init, print once, write to `~/.tinyraven/config.yml` (idempotent).
 - MVP scopes: `ADMIN`, `WORKSPACE:READ_ALL`, per-pipe `READ`. Resource tokens declared in `.pipe`/`.datasource`, materialized on `tr deploy`.
-- **Resource-token materialization (see `docs/adr/0027-resource-token-materialization-on-deploy.md`):** `TOKEN "name" READ` line — name in git, value never. Deploy idempotently upserts (generate value if absent, print once; **never rotate** existing). Scopes = union across all files declaring the name, re-applied each deploy. Deploy reconciles **only file-declared** tokens — `ADMIN` + `tr token create` are manual, never pruned. Orphan (declared nowhere) → deploy **warns, does not delete**; revoke explicitly via `tr token rm <name>` / `tr deploy --prune-tokens`.
+- **Resource-token materialization (see `docs/adr/0030-resource-token-materialization-on-deploy.md`):** `TOKEN "name" READ` line — name in git, value never. Deploy idempotently upserts (generate value if absent, print once; **never rotate** existing). Scopes = union across all files declaring the name, re-applied each deploy. Deploy reconciles **only file-declared** tokens — `ADMIN` + `tr token create` are manual, never pruned. Orphan (declared nowhere) → deploy **warns, does not delete**; revoke explicitly via `tr token rm <name>` / `tr deploy --prune-tokens`.
 
 **SQL read-only enforcement (see `docs/adr/0011-sql-readonly-via-clickhouse-profile.md`):** `/v0/sql` + pipe reads run under a dedicated ClickHouse `readonly=2` user + resource caps — ClickHouse enforces, TinyRaven never parses SQL to block writes. Separate read-write CH user for Gatherer + `tr deploy` DDL.
 
