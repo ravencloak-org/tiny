@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "4e211dd7d8b4",
+  "session_id": "8800a864-e1cb-4d13-9744-9d16ef2a83c7",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-29T05:28:25.555356Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "PROMPT.md",
+    "docs/adr/0021-health-liveness-vs-readiness-dep-gating.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "4c60e2a5-8939-49fc-95bd-37ab50b64383",
+  "checkpoint_transcript_start": 626,
+  "transcript_lines_at_start": 626,
+  "token_usage": {
+    "input_tokens": 540,
+    "cache_creation_tokens": 6229,
+    "cache_read_tokens": 1530534,
+    "output_tokens": 4969,
+    "api_call_count": 8
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-29T05:28:25.492759Z",
+    "agent_lines": 33,
+    "human_added": 186,
+    "human_modified": 17,
+    "human_removed": 0,
+    "total_committed": 236,
+    "agent_percentage": 13.983050847457626
+  }
+}
