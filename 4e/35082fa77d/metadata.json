@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "4e35082fa77d",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "PROMPT.md",
+    "docs/adr/0026-browser-cors-now-jwt-deferred.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/4e/35082fa77d/0/metadata.json",
+      "transcript": "/4e/35082fa77d/0/full.jsonl",
+      "context": "/4e/35082fa77d/0/context.md",
+      "content_hash": "/4e/35082fa77d/0/content_hash.txt",
+      "prompt": "/4e/35082fa77d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 369,
+    "cache_creation_tokens": 5532,
+    "cache_read_tokens": 1796233,
+    "output_tokens": 4242,
+    "api_call_count": 7
+  }
+}
