@@ -5,12 +5,24 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 
 	"github.com/redis/go-redis/v9"
 
 	"github.com/tinyraven/tinyraven/internal/model"
 )
+
+// GenerateValue mints a random opaque bearer value (prefix "tr_"). Tokens are
+// secrets, not JWTs — TinyRaven stores them verbatim in Redis (ADR 0005).
+func GenerateValue() (string, error) {
+	b := make([]byte, 24)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return "tr_" + base64.RawURLEncoding.EncodeToString(b), nil
+}
 
 // keyPrefix namespaces token keys: tr:token:<value> -> token JSON.
 const keyPrefix = "tr:token:"
@@ -62,6 +74,41 @@ func (s *Store) Bootstrap(ctx context.Context, value string) error {
 
 // Ping satisfies model.Pinger for the readiness probe (ADR 0024).
 func (s *Store) Ping(ctx context.Context) error { return s.rdb.Ping(ctx).Err() }
+
+// List returns all stored tokens (SCAN over the namespace).
+func (s *Store) List(ctx context.Context) ([]*model.Token, error) {
+	var out []*model.Token
+	iter := s.rdb.Scan(ctx, 0, keyPrefix+"*", 100).Iterator()
+	for iter.Next(ctx) {
+		raw, err := s.rdb.Get(ctx, iter.Val()).Bytes()
+		if err != nil {
+			continue
+		}
+		if t, err := decodeToken(raw); err == nil {
+			out = append(out, t)
+		}
+	}
+	return out, iter.Err()
+}
+
+// Delete removes a token by its bearer value.
+func (s *Store) Delete(ctx context.Context, value string) error {
+	return s.rdb.Del(ctx, key(value)).Err()
+}
+
+// DeleteByName removes the token with the given name. Returns false if none matched.
+func (s *Store) DeleteByName(ctx context.Context, name string) (bool, error) {
+	toks, err := s.List(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, t := range toks {
+		if t.Name == name {
+			return true, s.Delete(ctx, t.Value)
+		}
+	}
+	return false, nil
+}
 
 func key(value string) string { return keyPrefix + value }
 

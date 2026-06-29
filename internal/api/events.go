@@ -21,6 +21,10 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "missing required query parameter: name")
 		return
 	}
+	if tok, _ := tokenFrom(r.Context()); !allow(tok, "APPEND", name) {
+		writeError(w, http.StatusForbidden, "token lacks APPEND scope for datasource: "+name)
+		return
+	}
 
 	body := http.MaxBytesReader(w, r.Body, s.deps.MaxCompressedBytes)
 	reader, err := decodeBody(body, r.Header.Get("Content-Encoding"))

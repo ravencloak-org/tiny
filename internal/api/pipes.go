@@ -15,6 +15,10 @@ func (s *server) handlePipe(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "pipe not found")
 		return
 	}
+	if tok, _ := tokenFrom(r.Context()); !allow(tok, "READ", name) {
+		writeError(w, http.StatusForbidden, "token lacks READ scope for pipe: "+name)
+		return
+	}
 	body, status, err := s.deps.Pipes.Run(r.Context(), name, r.URL.Query())
 	if err != nil {
 		// Runner sets status for client-mappable failures; default to 500.

@@ -70,7 +70,8 @@ func New(deps Deps) http.Handler {
 		r.Use(s.authMiddleware)
 		r.Post("/events", s.handleEvents)
 		if deps.SQLProxy != nil {
-			r.Handle("/sql", deps.SQLProxy) // GET + POST (ADR 0011)
+			// Raw SQL is powerful -> ADMIN only (ADR 0011 + 0005).
+			r.With(s.adminOnly).Handle("/sql", deps.SQLProxy) // GET + POST
 		}
 		if deps.OpenAPI != nil {
 			r.Get("/openapi.json", s.handleOpenAPI)
