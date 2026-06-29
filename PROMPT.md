@@ -42,6 +42,25 @@ import (
 )
 ```
 
+### Locked Dependencies (lean — prefer stdlib, reuse before reinvent)
+
+| Concern | Choice | Note |
+|---------|--------|------|
+| Router | `github.com/go-chi/chi/v5` | Final (CLAUDE.md). |
+| Rate limiting | `github.com/go-chi/httprate` | In-memory sliding-window, per-token. ADR 0015. |
+| ClickHouse insert | `github.com/ClickHouse/clickhouse-go/v2` | Native driver. ADR 0013. |
+| ClickHouse query | stdlib `net/http` → CH HTTP 8123 | ADR 0013. |
+| Redis | `github.com/redis/go-redis/v9` | Metadata registry + hot cache. ADR 0001. |
+| CLI / config | `cobra` + `viper` | Final. |
+| Metrics | `github.com/prometheus/client_golang` | `/v0/metrics` exposition — never hand-format. |
+| Template control flow (Phase 2) | `github.com/expr-lang/expr` | `{% if %}` condition eval — no hand-rolled evaluator. ADR 0003. |
+| OpenAPI spec | `github.com/getkin/kin-openapi` | Runtime build from pipe registry. ADR 0017. |
+| File watching (dev) | `github.com/fsnotify/fsnotify` | Dev-only hot reload, debounced ~300ms. ADR 0020. mtime-poll is the zero-dep fallback. |
+| Logging | stdlib `log/slog` | No zap/zerolog. |
+| JSON / NDJSON | stdlib `encoding/json` | `goccy/go-json` only if profiling demands. |
+
+No new dependency is added for what a few lines of stdlib already do.
+
 ---
 
 ## CLI: `tr` Binary
@@ -74,7 +93,7 @@ TinyRaven exposes **identical APIs** to Tinybird. Existing Tinybird client code 
 | `/v0/pipes/{name}.json` | GET | Parameterized SQL query execution |
 | `/v0/sql` | GET | Direct SQL (read-only ClickHouse proxy) |
 | `/health` | GET | Health check |
-| `/v0/metrics` | GET | Prometheus format metrics |
+| `/v0/metrics` | GET | Prometheus format metrics (via `prometheus/client_golang`) |
 
 ### File Format Parity
 
@@ -158,9 +177,9 @@ type Gatherer struct {
 - **Delivery contract (see `docs/adr/0004-ingestion-ack-on-buffer.md`):** ack-on-buffer → `/v0/events` returns **202 Accepted**. Graceful drain on SIGTERM (no loss on restart). Hard crash loses up to one batch window (at-most-once) until the optional disk WAL ships (Phase 2/3).
 
 **Pipe templating (see `docs/adr/0003-pipe-templating-parameterized-queries.md`):**
-- Value params `{{Type(name, default)}}` → ClickHouse parameterized query `{name:Type}` + params map (`param_<name>=...`). No string interpolation — injection-proof by construction. Never `text/template`.
-- Control flow `{% if %}` / `{% for %}` / `defined()` → hand-written Jinja-flavored evaluator producing final SQL; structural identifiers allowlisted.
-- MVP scope: common subset (if/elif/else, for, defined, type fns, `column()`). Full function catalog deferred to Phase 2.
+- **MVP (Phase 1): value params only.** `{{Type(name, default)}}` → ClickHouse parameterized query `{name:Type}` + params map (`param_<name>=...`). No string interpolation — injection-proof by construction. Never `text/template`. Pure substitution, zero parser.
+- **Control flow `{% if %}` / `{% for %}` / `defined()` deferred to Phase 2.** Thin block tokenizer delegating condition evaluation to `github.com/expr-lang/expr` (sandboxed) — no hand-rolled expression evaluator. Structural identifiers allowlisted.
+- Full function catalog (long tail) deferred to Phase 2+.
 - Execute via ClickHouse HTTP interface, return `FORMAT JSONEachRow`.
 
 **Auth tokens (RBAC) — see `docs/adr/0005-opaque-tokens-redis.md`:**
@@ -198,7 +217,7 @@ type Gatherer struct {
 | Materialized Views | Standard ClickHouse `CREATE MATERIALIZED VIEW` |
 | Branches | `CREATE DATABASE tr_{branch}` per git branch |
 | Token auth + RBAC | Go middleware + Redis |
-| Pipe stats / observability | `tinybird.pipe_stats` ClickHouse table |
+| Pipe stats / observability | `tinybird.pipe_stats` ClickHouse table, fed through the Gatherer as an internal datasource (async, best-effort — see `docs/adr/0014-pipe-stats-via-gatherer.md`) |
 
 **Tinybird's actual stack (for reference):** Python backend, C++ ClickHouse fork, Next.js UI, OpenResty LB, Redis, Kubernetes. We replace all of this with Go + OSS ClickHouse.
 
@@ -295,7 +314,7 @@ docker run -p 8000:8000 \
 - [ ] Basic pipe executor: parse `{{Type(param)}}` SQL templates, inject validated params, execute via ClickHouse HTTP
 - [ ] Token auth middleware (Bearer tokens → Redis lookup)
 - [ ] `tr local start` — Docker Compose stack (ClickHouse + TinyRaven + Redis)
-- [ ] File watching: `.datasource` / `.pipe` changes → hot reload
+- [ ] Hot reload (dev-only, `fsnotify`): `.pipe` change → atomic registry swap (instant); `.datasource` change → route through `tr deploy` safe-migration path, not instant DDL. See `docs/adr/0020-hot-reload-dev-only-pipes-instant-datasources-via-deploy.md`
 
 **Success criteria:** POST events → Gatherer → ClickHouse → GET pipe → JSON response
 
@@ -392,10 +411,10 @@ docker run -p 8000:8000 \
 
 **Goal:** Production readiness, ecosystem
 
-**Deliverables:**
-- [ ] Kafka connector (consumer group, configurable offset, schema mapping)
-- [ ] S3 connector (batch import, scheduled copy pipes)
-- [ ] PostgreSQL connector (table function, CDC via logical replication)
+**Deliverables:** (connectors = ClickHouse-native engines, not built services — see `docs/adr/0019-connectors-via-clickhouse-engines.md`)
+- [ ] Kafka: `.datasource` template for `ENGINE = Kafka(...)` + MV; `tr deploy` creates CH objects (CH runs the consumer)
+- [ ] S3 / files: `.datasource` templates for `s3()`/`url()`/`file()` + `ENGINE = S3`
+- [ ] PostgreSQL: `ENGINE = PostgreSQL(...)` / `postgresql()` table function (optional CDC via `MaterializedPostgreSQL`)
 - [ ] ClickHouse HTTP interface compatibility for BI tools (DBeaver, Grafana, Superset, Metabase)
 - [ ] Integration tests (end-to-end: event → query → result)
 - [ ] Load testing benchmarks (throughput, latency at 10k events/s)
@@ -409,7 +428,7 @@ docker run -p 8000:8000 \
 
 ## Pending Decisions (Not Yet Made)
 
-- [ ] **SQL template parser**: build custom or use an existing Go text template library?
+- [x] **SQL template parser**: RESOLVED → MVP ships value params only (pure CH-parameterized substitution, no parser). Control flow deferred to Phase 2, conditions via `github.com/expr-lang/expr` (no hand-rolled evaluator). See `docs/adr/0003-pipe-templating-parameterized-queries.md`.
 - [x] **Metadata storage**: RESOLVED → Redis only (AOF-persisted), matching Tinybird. Postgres dropped. See `docs/adr/0001-redis-only-metadata.md`.
 - [ ] **Installation script**: `curl https://tinyraven.io/install.sh | bash` — implement in Phase 4?
 - [ ] **Tinybird CLI passthrough mode**: support `TINYRAVEN_PASSTHROUGH=true` to forward requests to real Tinybird (for gradual migration)?

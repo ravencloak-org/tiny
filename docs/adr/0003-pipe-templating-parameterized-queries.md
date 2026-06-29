@@ -2,12 +2,13 @@
 
 Pipe value params (`{{Type(name, default)}}`) compile to ClickHouse server-side parameterized queries — `{name:Type}` placeholders plus a params map passed as `param_<name>=...` over the ClickHouse HTTP interface. Values are never string-interpolated into SQL. Go's `text/template` is explicitly rejected for value substitution.
 
-Control flow (`{% if %}`, `{% for %}`, `defined()`, function set) is handled by a hand-written Jinja-flavored evaluator on top, since it shapes SQL *structure* and cannot route through value params. Structural inputs (identifiers) are allowlisted, never raw-interpolated.
+Control flow (`{% if %}`, `{% for %}`, `defined()`, function set) shapes SQL *structure* and cannot route through value params. When built, it is a thin block tokenizer that delegates expression evaluation inside `{% %}` to **`github.com/expr-lang/expr`** (a mature, safe, sandboxed evaluator) — we do **not** hand-write the expression parser/evaluator, which is the hard, bug-prone part. Structural inputs (identifiers) are allowlisted, never raw-interpolated.
 
 ## Scope
 
-- **MVP:** the common, most-used subset — `{% if/elif/else %}`, `{% for %}`, `defined()`, the type functions (`String/Int*/Float*/DateTime/UUID/Boolean`), and `column()`. Enough to run the pipes real users write.
-- **Later (Phase 2+):** full Tinybird template function catalog (the long tail: `Array`, `enumerate`, `sql_and`, etc.). Gaps tracked as issues.
+- **MVP (Phase 1):** **value params only** — `{{Type(name, default)}}` → CH `{name:Type}` + params map. Zero template parser; pure substitution. Most real-world pipes need nothing more. This deletes the single hardest parser from MVP scope to accelerate the release.
+- **Phase 2:** control flow (`{% if/elif/else %}`, `{% for %}`, `defined()`, `column()`), conditions evaluated via `expr-lang/expr`.
+- **Phase 2+ (long tail):** full Tinybird template function catalog (`Array`, `enumerate`, `sql_and`, etc.). Gaps tracked as issues.
 
 ## Why
 

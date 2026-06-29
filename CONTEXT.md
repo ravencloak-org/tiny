@@ -42,3 +42,11 @@ _Avoid_: Materialized view (the ClickHouse object), Rollup.
 
 **Source of truth**:
 The user's git repo. `.datasource` and `.pipe` files are authoritative; everything in the Metadata Registry derives from them (tokens excepted).
+
+**pipe_stats**:
+The observability record of pipe/SQL query executions (latency, rows read, bytes, error, token), stored in the `tinybird.pipe_stats` ClickHouse table. Written as an internal datasource through the Gatherer — best-effort, never blocking a query response.
+_Avoid_: Query log, Audit log, Metrics table.
+
+**Quarantine**:
+The fate of an ingested row that fails validation against its Datasource schema. Rather than failing the whole batch, the row is written to a `{datasource}_quarantine` ClickHouse table with the raw line and the error(s); ingestion still succeeds (`202`). A real, queryable table — not a discard.
+_Avoid_: Dead-letter, Reject, Error log.
