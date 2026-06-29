@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "767548543e70",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "PROMPT.md",
+    "docs/adr/0029-api-versioning-v0-frozen-tr-namespace-native.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/76/7548543e70/0/metadata.json",
+      "transcript": "/76/7548543e70/0/full.jsonl",
+      "context": "/76/7548543e70/0/context.md",
+      "content_hash": "/76/7548543e70/0/content_hash.txt",
+      "prompt": "/76/7548543e70/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1395,
+    "cache_creation_tokens": 5256,
+    "cache_read_tokens": 1739083,
+    "output_tokens": 4586,
+    "api_call_count": 7
+  }
+}

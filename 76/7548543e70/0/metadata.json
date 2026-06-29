@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "767548543e70",
+  "session_id": "8800a864-e1cb-4d13-9744-9d16ef2a83c7",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-29T05:45:41.997395Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "PROMPT.md",
+    "docs/adr/0029-api-versioning-v0-frozen-tr-namespace-native.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "2079e8d4-2d55-46e5-a73b-e2db83548a25",
+  "checkpoint_transcript_start": 952,
+  "transcript_lines_at_start": 952,
+  "token_usage": {
+    "input_tokens": 1395,
+    "cache_creation_tokens": 5256,
+    "cache_read_tokens": 1739083,
+    "output_tokens": 4586,
+    "api_call_count": 7
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-29T05:45:41.88995Z",
+    "agent_lines": 0,
+    "human_added": 1,
+    "human_modified": 24,
+    "human_removed": 0,
+    "total_committed": 23,
+    "agent_percentage": 0
+  }
+}
