@@ -59,6 +59,7 @@ import (
 | Logging | stdlib `log/slog` | No zap/zerolog. |
 | JSON / NDJSON | stdlib `encoding/json` | `goccy/go-json` only if profiling demands. |
 | Request decompression | stdlib `compress/gzip` + `klauspost/compress/zstd` | `/v0/events` `Content-Encoding: gzip`/`zstd`. zstd is transitive via `clickhouse-go` — no new direct dep. chi does **not** decompress requests. ADR 0023. |
+| CORS | `github.com/go-chi/cors` | Browser access to pipes/sql. Configurable origins, **default off**. JWT browser tokens deferred to Phase 2. ADR 0026. |
 
 No new dependency is added for what a few lines of stdlib already do.
 
