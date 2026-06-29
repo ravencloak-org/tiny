@@ -4,6 +4,7 @@ go 1.26.4
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.47.0
+	github.com/expr-lang/expr v1.17.8
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-chi/httprate v0.15.0
 	github.com/prometheus/client_golang v1.23.2
