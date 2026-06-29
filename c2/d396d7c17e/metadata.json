@@ -3,9 +3,10 @@
   "checkpoint_id": "c2d396d7c17e",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
-    "PROMPT.md"
+    "PROMPT.md",
+    "docs/adr/0024-health-liveness-readiness-drain.md"
   ],
   "sessions": [
     {
@@ -14,13 +15,20 @@
       "context": "/c2/d396d7c17e/0/context.md",
       "content_hash": "/c2/d396d7c17e/0/content_hash.txt",
       "prompt": "/c2/d396d7c17e/0/prompt.txt"
+    },
+    {
+      "metadata": "/c2/d396d7c17e/1/metadata.json",
+      "transcript": "/c2/d396d7c17e/1/full.jsonl",
+      "context": "/c2/d396d7c17e/1/context.md",
+      "content_hash": "/c2/d396d7c17e/1/content_hash.txt",
+      "prompt": "/c2/d396d7c17e/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 4212,
-    "cache_creation_tokens": 17760,
-    "cache_read_tokens": 1813325,
-    "output_tokens": 8210,
-    "api_call_count": 9
+    "input_tokens": 8482,
+    "cache_creation_tokens": 33128,
+    "cache_read_tokens": 3906773,
+    "output_tokens": 16615,
+    "api_call_count": 18
   }
 }
