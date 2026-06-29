@@ -3,11 +3,14 @@
   "checkpoint_id": "fa97088337af",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 8,
+  "checkpoints_count": 12,
   "files_touched": [
+    ".github/FUNDING.yml",
     "CONTEXT.md",
     "HANDOFF.md",
     "PROMPT.md",
+    "README.md",
+    "docs/MONETIZATION.md",
     "docs/adr/0003-pipe-templating-parameterized-queries.md",
     "docs/adr/0014-pipe-stats-via-gatherer.md",
     "docs/adr/0015-rate-limit-via-httprate.md",
@@ -15,6 +18,7 @@
     "docs/adr/0017-openapi-runtime-from-registry.md",
     "docs/adr/0018-events-quarantine-validate-in-go.md",
     "docs/adr/0019-connectors-via-clickhouse-engines.md",
+    "docs/adr/0019-monetization-sustainability-only.md",
     "docs/adr/0020-hot-reload-dev-only-pipes-instant-datasources-via-deploy.md",
     "docs/adr/0020-license-apache-not-copyleft.md"
   ],
@@ -25,13 +29,20 @@
       "context": "/fa/97088337af/0/context.md",
       "content_hash": "/fa/97088337af/0/content_hash.txt",
       "prompt": "/fa/97088337af/0/prompt.txt"
+    },
+    {
+      "metadata": "/fa/97088337af/1/metadata.json",
+      "transcript": "/fa/97088337af/1/full.jsonl",
+      "context": "/fa/97088337af/1/context.md",
+      "content_hash": "/fa/97088337af/1/content_hash.txt",
+      "prompt": "/fa/97088337af/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 39907,
-    "cache_creation_tokens": 493439,
-    "cache_read_tokens": 15400643,
-    "output_tokens": 50270,
-    "api_call_count": 79
+    "input_tokens": 61882,
+    "cache_creation_tokens": 702032,
+    "cache_read_tokens": 19887085,
+    "output_tokens": 71080,
+    "api_call_count": 104
   }
 }
