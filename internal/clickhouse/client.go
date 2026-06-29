@@ -74,6 +74,21 @@ func New(cfg Config) (*Client, error) {
 	return c, nil
 }
 
+// WithDatabase returns a shallow copy of c that targets db, sharing the same
+// HTTP client and native connection. deploy uses it to point DDL at a per-branch
+// workspace database (tr_<branch>; ADR 0007) after CreateDatabase, without
+// reopening connections. Only the HTTP Query/DDL path is re-scoped (all deploy
+// needs); the shared native conn keeps its original Auth.Database, so Insert
+// still targets the original database.
+//
+// ponytail: Close on either the original or a copy closes the shared native
+// pool. Treat the original as the owner and don't Close copies.
+func (c *Client) WithDatabase(db string) *Client {
+	cp := *c
+	cp.db = db
+	return &cp
+}
+
 // Close releases the native connection pool.
 func (c *Client) Close() error {
 	if c.conn != nil {

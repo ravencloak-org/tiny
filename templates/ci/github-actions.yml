@@ -1,0 +1,74 @@
+# TinyRaven CI/CD — GitHub Actions template
+#
+# Copy this file into YOUR repository at .github/workflows/tinyraven.yml and
+# tweak the placeholders below. It mirrors the Tinybird data-project workflow:
+#
+#   • Pull request  -> validate the .datasource/.pipe files (no production writes)
+#   • Push to main  -> deploy them to the production workspace
+#
+# The `tr` CLI reads TINYBIRD_HOST / TINYBIRD_TOKEN from the environment
+# (see internal/config — env beats config files). Store them as repo secrets:
+#   Settings -> Secrets and variables -> Actions ->  TINYBIRD_HOST, TINYBIRD_TOKEN
+
+name: TinyRaven
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Avoid two deploys racing on the same workspace.
+concurrency:
+  group: tinyraven-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # <-- EDIT: pin the tr version you deploy with (or use 'latest').
+  TR_VERSION: latest
+  TINYBIRD_HOST: ${{ secrets.TINYBIRD_HOST }}
+  TINYBIRD_TOKEN: ${{ secrets.TINYBIRD_TOKEN }}
+
+jobs:
+  # --------------------------------------------------------------------------
+  # PR: validate only. Per ADR 0007 a branch deploys to an isolated tr_<branch>
+  # database, so this never touches production data. `--check` is a dry run that
+  # parses + diffs the schema and fails on breaking changes WITHOUT applying.
+  # (If your installed tr predates --check, swap in: `tr deploy --project-dir .`
+  # against a throwaway branch DB — see templates/ci/README.md.)
+  # --------------------------------------------------------------------------
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tr
+        # <-- EDIT: replace with your install step once distribution lands
+        # (Phase 4: brew / apt / `go install`). Placeholder shown below.
+        run: |
+          echo "Install the tr binary here, e.g.:"
+          echo "  go install github.com/tinyraven/tinyraven/cmd/tr@${TR_VERSION}"
+
+      - name: Validate datasources and pipes (dry run)
+        run: tr deploy --check --project-dir .
+
+  # --------------------------------------------------------------------------
+  # main: deploy. Runs only on push to main (i.e. after a PR merges).
+  # `tr deploy` detects the branch (main -> tr_main) and applies safe
+  # migrations; breaking changes still require --allow-breaking (ADR 0007).
+  # --------------------------------------------------------------------------
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tr
+        # <-- EDIT: same install step as the validate job.
+        run: |
+          echo "Install the tr binary here, e.g.:"
+          echo "  go install github.com/tinyraven/tinyraven/cmd/tr@${TR_VERSION}"
+
+      - name: Deploy to production workspace
+        run: tr deploy --project-dir .

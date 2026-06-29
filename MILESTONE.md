@@ -71,14 +71,14 @@ curl localhost:8000/v0/metrics
 **Deliverable:** Full development workflow parity with Tinybird
 
 ### Must Ship
-- [ ] Branch isolation: `CREATE DATABASE tr_{branch}` per git branch (single-tenant; workspace = deployment)
-- [ ] `tr local start --branch feature-x` → isolated ClickHouse DB
-- [ ] `tr deploy` detects git branch → targets correct workspace DB
-- [ ] Materialized views from `.pipe` files with `TYPE materialization` + `TARGET_TABLE`
-- [ ] Breaking schema migrations: shadow table → MV backfill → `EXCHANGE TABLES` (atomic swap)
-- [ ] `~/.tinyraven/config.yml` read/write (same format as Tinybird's `~/.tinybird/config.yml`)
-- [ ] Env var support: `TINYBIRD_HOST`, `TINYBIRD_TOKEN`, `TINYBIRD_WORKSPACE` (all honoured)
-- [ ] GitHub Actions CI/CD template: validate on PR, deploy on merge to main
+- [x] Branch isolation: `CREATE DATABASE tr_{branch}` per git branch (single-tenant; workspace = deployment)
+- [x] `tr local start --branch feature-x` → isolated ClickHouse DB
+- [x] `tr deploy` detects git branch → targets correct workspace DB
+- [x] Materialized views from `.pipe` files with `TYPE materialization` + `TARGET_TABLE`
+- [x] Breaking schema migrations: shadow table → backfill → `EXCHANGE TABLES` (atomic swap)
+- [x] `~/.tinyraven/config.yml` read/write (same format as Tinybird's `~/.tinybird/config.yml`)
+- [x] Env var support: `TINYBIRD_HOST`, `TINYBIRD_TOKEN`, `TINYBIRD_WORKSPACE` (all honoured)
+- [x] GitHub Actions CI/CD template: validate on PR, deploy on merge to main
 
 ### Success Criteria
 ```bash
