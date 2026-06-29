@@ -93,8 +93,8 @@ TinyRaven exposes **identical APIs** to Tinybird. Existing Tinybird client code 
 | `/v0/events` | POST | JSON/NDJSON event ingestion |
 | `/v0/pipes/{name}.json` | GET | Parameterized SQL query execution |
 | `/v0/sql` | GET | Direct SQL (read-only ClickHouse proxy) |
-| `/health` | GET | Liveness — `200` if process up, zero dep checks. ADR 0021. |
-| `/health/ready` | GET | Readiness — `200`/`503` gated on Redis + ClickHouse (cached ~2–3s). ADR 0021. |
+| `/health` | GET | Liveness — `200` if process up, zero dep checks. ADR 0024. |
+| `/health/ready` | GET | Readiness — `200`/`503` gated on Redis + ClickHouse (cached ~2–3s). ADR 0024. |
 | `/v0/metrics` | GET | Prometheus format metrics (via `prometheus/client_golang`) |
 
 ### File Format Parity
@@ -312,7 +312,7 @@ docker run -p 8000:8000 \
 **Goal:** Working `tr local` dev environment
 
 **Deliverables:**
-- [ ] Go HTTP server (`net/http` + `chi`) with `/v0/events`, `/v0/pipes/:name.json`, `/health` (liveness) + `/health/ready` (readiness: Redis + ClickHouse, ADR 0021)
+- [ ] Go HTTP server (`net/http` + `chi`) with `/v0/events`, `/v0/pipes/:name.json`, `/health` (liveness) + `/health/ready` (readiness: Redis + ClickHouse, ADR 0024)
 - [ ] Gatherer: in-memory ring buffer, flush on `max(10,000 events, 5s timeout)`
 - [ ] Datasource schema registry (parse `.datasource` files, store in Redis)
 - [ ] Basic pipe executor: parse `{{Type(param)}}` SQL templates, inject validated params, execute via ClickHouse HTTP
