@@ -252,3 +252,19 @@ what's the token used for? do frontend apps have this token to connect to backen
 
 build token create + scope enforcement
 
+### Prompt 56
+
+tag v0.2.0 and redeploy
+
+### Prompt 57
+
+why do I have to keep setting the version in env for prod update I want gh action to take care of it
+
+### Prompt 58
+
+continue
+
+### Prompt 59
+
+Continue
+
