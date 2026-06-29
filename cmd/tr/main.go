@@ -19,7 +19,8 @@ func main() {
 		SilenceErrors: true,
 		Version:       version,
 	}
-	root.AddCommand(newServeCmd(), newLocalCmd(), newDeployCmd(), newTokenCmd())
+	root.AddCommand(newServeCmd(), newLocalCmd(), newDeployCmd(), newTokenCmd(),
+		newLoginCmd(), newStatusCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)

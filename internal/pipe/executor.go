@@ -69,6 +69,17 @@ func (e *Executor) Run(ctx context.Context, name string, params url.Values) (bod
 
 	sql := composeSQL(p)
 
+	// Resolve control flow ({% if/elif/else/end %}) FIRST, before any value-param
+	// substitution (ADR 0003). Non-taken branches — and the {{Type(name)}}
+	// placeholders inside them — are dropped here, so they are never bound and a
+	// param referenced only in a false branch does not count as required below.
+	sql, err = resolveControlFlow(sql, params, p.Endpoint.Params)
+	if err != nil {
+		return nil, http.StatusBadRequest, err
+	}
+	// required = the params that survived control flow; only these are bound/required.
+	required := paramNamesInSQL(sql)
+
 	// Rewrite {{Type(name, default)}} -> {name:Type}, mapping the template type to
 	// its ClickHouse parameter type. Defaults bind in the param map below, not in
 	// the SQL text — values are never interpolated (ADR 0003).
@@ -79,6 +90,9 @@ func (e *Executor) Run(ctx context.Context, name string, params url.Values) (bod
 
 	chParams := make(map[string]string, len(p.Endpoint.Params))
 	for _, param := range p.Endpoint.Params {
+		if !required[param.Name] {
+			continue // referenced only inside a non-taken branch (or not at all): skip
+		}
 		var raw string
 		switch {
 		case params.Has(param.Name):

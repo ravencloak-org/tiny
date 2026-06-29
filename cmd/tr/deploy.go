@@ -7,6 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 
+	"github.com/tinyraven/tinyraven/internal/auth"
 	"github.com/tinyraven/tinyraven/internal/branch"
 	"github.com/tinyraven/tinyraven/internal/clickhouse"
 	"github.com/tinyraven/tinyraven/internal/config"
@@ -24,12 +25,13 @@ func newDeployCmd() *cobra.Command {
 		allowBreaking bool
 		projectDir    string
 		branchFlag    string
+		check         bool
 	)
 	cmd := &cobra.Command{
 		Use:   "deploy",
 		Short: "Validate and apply .datasource/.pipe files to ClickHouse",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runDeploy(cmd.Context(), config.Load(), projectDir, allowBreaking, branchFlag)
+			return runDeploy(cmd.Context(), config.Load(), projectDir, allowBreaking, branchFlag, check)
 		},
 	}
 	cmd.Flags().BoolVar(&allowBreaking, "allow-breaking", false,
@@ -38,10 +40,12 @@ func newDeployCmd() *cobra.Command {
 		"directory containing .datasource/.pipe files")
 	cmd.Flags().StringVar(&branchFlag, "branch", "",
 		"target workspace branch (default: current git branch -> tr_<branch>)")
+	cmd.Flags().BoolVar(&check, "check", false,
+		"dry run: validate + show the plan, apply nothing")
 	return cmd
 }
 
-func runDeploy(ctx context.Context, cfg config.Config, dir string, allowBreaking bool, branchFlag string) error {
+func runDeploy(ctx context.Context, cfg config.Config, dir string, allowBreaking bool, branchFlag string, check bool) error {
 	// Resolve the workspace branch -> ClickHouse database (ADR 0007).
 	b := branchFlag
 	if b == "" {
@@ -66,9 +70,14 @@ func runDeploy(ctx context.Context, cfg config.Config, dir string, allowBreaking
 	defer rdb.Close()
 	dsReg := datasource.NewRegistry(rdb)
 
+	if check {
+		fmt.Println("(--check: dry run, nothing will be applied)")
+	}
 	report, runErr := deploy.Run(ctx, dir, ch, dsReg, deploy.Options{
 		AllowBreaking: allowBreaking,
 		Database:      db,
+		DryRun:        check,
+		Tokens:        auth.NewStore(rdb), // materialize TOKEN "x" READ/APPEND (ADR 0030)
 	})
 	if report != nil {
 		printReport(report)
@@ -90,6 +99,9 @@ func printReport(r *deploy.Report) {
 	}
 	for _, mv := range r.MaterializedViews {
 		fmt.Printf("✓ Materialized view: %s\n", mv)
+	}
+	for _, tk := range r.Tokens {
+		fmt.Printf("✓ Token materialized: %s\n", tk)
 	}
 	for _, b := range r.Breaking {
 		fmt.Printf("✗ Breaking change (not applied; pass --allow-breaking): %s\n", b)

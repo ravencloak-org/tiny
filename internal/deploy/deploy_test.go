@@ -98,6 +98,29 @@ func (r *memReg) List(_ context.Context) ([]*model.Datasource, error) {
 	return out, nil
 }
 
+// fakeTokens implements deploy.TokenStore. existing seeds what List returns;
+// puts records every Put so tests can assert minted values and scopes.
+type fakeTokens struct {
+	existing []*model.Token
+	puts     []*model.Token
+}
+
+func (f *fakeTokens) List(context.Context) ([]*model.Token, error) { return f.existing, nil }
+func (f *fakeTokens) Put(_ context.Context, t *model.Token) error {
+	f.puts = append(f.puts, t)
+	return nil
+}
+
+// scopesOf returns the recorded Put for name (nil if none).
+func (f *fakeTokens) put(name string) *model.Token {
+	for _, t := range f.puts {
+		if t.Name == name {
+			return t
+		}
+	}
+	return nil
+}
+
 // writeProject writes the given files (name -> content) into a fresh temp dir.
 func writeProject(t *testing.T, files map[string]string) string {
 	t.Helper()
@@ -378,5 +401,126 @@ func TestRun_CleanRediffNoChanges(t *testing.T) {
 	}
 	if _, ok := reg.m["events"]; !ok {
 		t.Error("datasource should still be registered on a clean deploy")
+	}
+}
+
+// TestRun_MaterializesResourceTokens covers ADR 0030 scope rules: READ in a
+// .pipe -> READ:<pipe>; APPEND in a .datasource -> APPEND:<ds>; and the union of
+// scopes for the same name declared across files. A brand-new name is minted
+// with a generated value.
+func TestRun_MaterializesResourceTokens(t *testing.T) {
+	dir := writeProject(t, map[string]string{
+		// "dashboard" declared in both files -> scopes union; "ro" only in the pipe.
+		"events.datasource": "SCHEMA >\n    user_id String\nTOKEN \"dashboard\" APPEND\n",
+		"top.pipe": "TOKEN \"dashboard\" READ\nTOKEN \"ro\" READ\n" +
+			"ENDPOINT top\nSQL >\n    SELECT user_id FROM events LIMIT {{Int32(n, 5)}}",
+	})
+	ch := &fakeCH{live: map[string][]model.Column{}}
+	reg := newMemReg()
+	tok := &fakeTokens{}
+
+	report, err := Run(context.Background(), dir, ch, reg, Options{Tokens: tok})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if strings.Join(report.Tokens, ",") != "dashboard,ro" {
+		t.Errorf("report.Tokens = %v, want [dashboard ro]", report.Tokens)
+	}
+	// "dashboard": union of APPEND:events (datasource) and READ:top (pipe), sorted.
+	if d := tok.put("dashboard"); d == nil {
+		t.Fatal("dashboard token not put")
+	} else if strings.Join(d.Scopes, ",") != "APPEND:events,READ:top" {
+		t.Errorf("dashboard scopes = %v, want [APPEND:events READ:top]", d.Scopes)
+	} else if d.Value == "" {
+		t.Error("new dashboard token minted with empty value")
+	}
+	if r := tok.put("ro"); r == nil || strings.Join(r.Scopes, ",") != "READ:top" {
+		t.Errorf("ro token = %+v, want scopes [READ:top]", r)
+	}
+}
+
+// TestRun_TokenUpsertIsIdempotent verifies the never-rotate rule: an existing
+// token keeps its value while its scopes are recomputed; only new names get a
+// generated value.
+func TestRun_TokenUpsertIsIdempotent(t *testing.T) {
+	dir := writeProject(t, map[string]string{
+		"events.datasource": "SCHEMA >\n    user_id String\nTOKEN \"dashboard\" APPEND\n",
+		"top.pipe":          "TOKEN \"dashboard\" READ\nTOKEN \"fresh\" READ\nENDPOINT top\nSQL >\n    SELECT 1",
+	})
+	ch := &fakeCH{live: map[string][]model.Column{}}
+	reg := newMemReg()
+	tok := &fakeTokens{existing: []*model.Token{
+		{Name: "dashboard", Value: "tr_EXISTING", Scopes: []string{"READ:stale"}},
+	}}
+
+	if _, err := Run(context.Background(), dir, ch, reg, Options{Tokens: tok}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	d := tok.put("dashboard")
+	if d == nil || d.Value != "tr_EXISTING" {
+		t.Errorf("existing token value rotated: got %+v, want value tr_EXISTING", d)
+	}
+	if d != nil && strings.Join(d.Scopes, ",") != "APPEND:events,READ:top" {
+		t.Errorf("dashboard scopes not recomputed: %v", d.Scopes)
+	}
+	f := tok.put("fresh")
+	if f == nil || f.Value == "" || f.Value == "tr_EXISTING" {
+		t.Errorf("new token should get a distinct generated value, got %+v", f)
+	}
+}
+
+// TestRun_DryRunAppliesNothing asserts the plan is fully reported while every
+// mutation — CreateDatabase, EnsureTable, ALTER, MV creation, registry Put, and
+// token mint — is skipped.
+func TestRun_DryRunAppliesNothing(t *testing.T) {
+	dir := writeProject(t, map[string]string{
+		"ev.datasource":    "SCHEMA >\n    user_id String\nTOKEN \"tok\" APPEND\n", // missing live -> create
+		"users.datasource": "SCHEMA >\n    id String,\n    country String\n",       // additive alter
+		"mv.pipe": "TOKEN \"tok\" READ\nMATERIALIZATION mv\nTARGET_TABLE ev\n" +
+			"SQL >\n    SELECT user_id FROM ev",
+	})
+	ch := &fakeCH{live: map[string][]model.Column{
+		"users": {{Name: "id", Type: "String"}}, // country is new in the file
+	}}
+	reg := newMemReg()
+	tok := &fakeTokens{}
+
+	report, err := Run(context.Background(), dir, ch, reg, Options{
+		Database: "tr_feature-x",
+		Tokens:   tok,
+		DryRun:   true,
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// Plan is reported.
+	if len(report.Created) != 1 || report.Created[0] != "ev" {
+		t.Errorf("Created = %v, want [ev]", report.Created)
+	}
+	if len(report.AltersApplied) != 1 || !strings.Contains(report.AltersApplied[0], "ADD COLUMN IF NOT EXISTS `country`") {
+		t.Errorf("AltersApplied = %v, want planned country ALTER", report.AltersApplied)
+	}
+	if len(report.MaterializedViews) != 1 || report.MaterializedViews[0] != "mv" {
+		t.Errorf("MaterializedViews = %v, want [mv]", report.MaterializedViews)
+	}
+	if strings.Join(report.Tokens, ",") != "tok" {
+		t.Errorf("Tokens = %v, want [tok]", report.Tokens)
+	}
+
+	// Nothing applied.
+	if len(ch.ensured) != 0 || len(ch.dbs) != 0 || len(ch.mvs) != 0 || len(ch.ddl) != 0 {
+		t.Errorf("CH mutated on dry run: ensured=%v dbs=%v mvs=%v ddl=%v", ch.ensured, ch.dbs, ch.mvs, ch.ddl)
+	}
+	for _, q := range ch.queries {
+		if strings.Contains(q, "ALTER") {
+			t.Errorf("ALTER issued on dry run: %q", q)
+		}
+	}
+	if len(reg.m) != 0 {
+		t.Errorf("datasources registered on dry run: %v", reg.m)
+	}
+	if len(tok.puts) != 0 {
+		t.Errorf("tokens minted on dry run: %v", tok.puts)
 	}
 }

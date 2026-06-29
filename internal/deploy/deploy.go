@@ -15,9 +15,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
+	"github.com/tinyraven/tinyraven/internal/auth"
 	"github.com/tinyraven/tinyraven/internal/clickhouse"
 	"github.com/tinyraven/tinyraven/internal/datasource"
 	"github.com/tinyraven/tinyraven/internal/model"
@@ -53,6 +55,16 @@ type dbScoper interface {
 	WithDatabase(db string) *clickhouse.Client
 }
 
+// TokenStore is the subset of token operations deploy needs to materialize
+// resource tokens (ADR 0030). It is wider than model.TokenStore (which only
+// validates + puts, keyed by value) because the idempotent, never-rotate upsert
+// must find an existing token by Name — and that requires List. *auth.Store
+// satisfies it; cmd/tr passes auth.NewStore(rdb) into Options.Tokens.
+type TokenStore interface {
+	List(ctx context.Context) ([]*model.Token, error)
+	Put(ctx context.Context, t *model.Token) error
+}
+
 // Options controls a deploy run.
 type Options struct {
 	// AllowBreaking acknowledges breaking schema changes. With it set, breaking
@@ -65,13 +77,25 @@ type Options struct {
 	// creates it (CREATE DATABASE IF NOT EXISTS) and re-scopes the client onto it
 	// before any table DDL. Empty keeps the client's configured database.
 	Database string
+
+	// Tokens, when non-nil, makes Run materialize the resource tokens declared via
+	// `TOKEN "name" READ|APPEND` lines in .pipe/.datasource files (ADR 0030). Nil
+	// skips token materialization entirely, keeping Run backward-compatible with
+	// callers that have no token store wired.
+	Tokens TokenStore
+
+	// DryRun computes the full plan — validation, schema diff, breaking-change
+	// detection, MVs, tokens — and populates the Report, but applies NOTHING: no
+	// ClickHouse DDL, no registry writes, no token mint. Backs `tr deploy --check`.
+	DryRun bool
 }
 
 // Report summarizes a deploy. Created lists datasources whose tables were
 // created; AltersApplied lists the additive ALTER statements run; Breaking lists
 // detected breaking changes; BreakingApplied lists the breaking migrations
 // actually performed (only when AllowBreaking); MaterializedViews lists the MVs
-// ensured (ADR 0010).
+// ensured (ADR 0010); Tokens lists the resource-token names materialized (or,
+// on a dry run, that would be materialized) from file declarations (ADR 0030).
 type Report struct {
 	Datasources       int
 	Pipes             int
@@ -80,6 +104,7 @@ type Report struct {
 	Breaking          []string
 	BreakingApplied   []string
 	MaterializedViews []string
+	Tokens            []string
 }
 
 // Run validates and applies the project in dir.
@@ -104,8 +129,12 @@ func Run(ctx context.Context, dir string, ch CH, dsReg model.DatasourceRegistry,
 	// current (existing) database; the re-scope only takes effect for a CH that
 	// exposes WithDatabase (the real client) — all the orchestrator ever passes.
 	if opts.Database != "" {
-		if err := ch.CreateDatabase(ctx, opts.Database); err != nil {
-			return report, err
+		// CreateDatabase is a mutation, skipped on a dry run. We still re-scope the
+		// client so the diff queries below target the branch database (read-only).
+		if !opts.DryRun {
+			if err := ch.CreateDatabase(ctx, opts.Database); err != nil {
+				return report, err
+			}
 		}
 		if sc, ok := ch.(dbScoper); ok {
 			ch = sc.WithDatabase(opts.Database)
@@ -171,37 +200,47 @@ func Run(ctx context.Context, dir string, ch CH, dsReg model.DatasourceRegistry,
 	}
 
 	// Apply pass: create new tables, rebuild breaking ones via shadow swap, apply
-	// additive alters to the rest, and register every datasource.
+	// additive alters to the rest, and register every datasource. On a dry run the
+	// plan is recorded into the Report but every mutation is skipped.
 	for _, pl := range plans {
 		switch {
 		case pl.create:
-			if err := ch.EnsureTable(ctx, pl.ds); err != nil {
-				return report, err
+			if !opts.DryRun {
+				if err := ch.EnsureTable(ctx, pl.ds); err != nil {
+					return report, err
+				}
 			}
 			report.Created = append(report.Created, pl.ds.Name)
 		case pl.breaking:
 			// AllowBreaking is guaranteed here (refusal returned above). The shadow
 			// carries the full new schema, so pl.adds are subsumed and skipped.
-			if err := applyBreaking(ctx, ch, pl.ds, pl.overlap); err != nil {
-				return report, err
+			if !opts.DryRun {
+				if err := applyBreaking(ctx, ch, pl.ds, pl.overlap); err != nil {
+					return report, err
+				}
 			}
 			report.BreakingApplied = append(report.BreakingApplied, fmt.Sprintf(
 				"%s: rebuilt via shadow swap (%d columns backfilled)", pl.ds.Name, len(pl.overlap)))
 		default:
 			for _, alter := range pl.adds {
-				if _, err := ch.Query(ctx, alter, nil, nil); err != nil {
-					return report, fmt.Errorf("apply migration %q: %w", alter, err)
+				if !opts.DryRun {
+					if _, err := ch.Query(ctx, alter, nil, nil); err != nil {
+						return report, fmt.Errorf("apply migration %q: %w", alter, err)
+					}
 				}
 				report.AltersApplied = append(report.AltersApplied, alter)
 			}
 		}
-		if err := dsReg.Put(ctx, pl.ds); err != nil {
-			return report, fmt.Errorf("register datasource %q: %w", pl.ds.Name, err)
+		if !opts.DryRun {
+			if err := dsReg.Put(ctx, pl.ds); err != nil {
+				return report, fmt.Errorf("register datasource %q: %w", pl.ds.Name, err)
+			}
 		}
 	}
 
 	// Materialized-view pass (ADR 0010): once all tables exist, wire each
 	// materialization pipe's MV into its target table. Idempotent (IF NOT EXISTS).
+	// Target validation runs even on a dry run; only the CREATE is skipped.
 	known := make(map[string]bool, len(dss))
 	for _, ds := range dss {
 		known[ds.Name] = true
@@ -210,13 +249,109 @@ func Run(ctx context.Context, dir string, ch CH, dsReg model.DatasourceRegistry,
 		if p.Material == nil {
 			continue
 		}
-		if err := ensureMaterialization(ctx, ch, p.Material, known); err != nil {
+		if err := ensureMaterialization(ctx, ch, p.Material, known, !opts.DryRun); err != nil {
 			return report, err
 		}
 		report.MaterializedViews = append(report.MaterializedViews, p.Material.Name)
 	}
 
+	// Resource-token materialization (ADR 0030): mint/upsert the tokens declared
+	// in the project files. On a dry run we report the planned names but mint
+	// nothing; with no store wired we skip entirely (backward-compatible).
+	declared := scanTokens(dss, pipes)
+	switch {
+	case opts.DryRun:
+		report.Tokens = sortedKeys(declared)
+	case opts.Tokens != nil:
+		names, err := materializeTokens(ctx, opts.Tokens, declared)
+		if err != nil {
+			return report, err
+		}
+		report.Tokens = names
+	}
+
 	return report, nil
+}
+
+// scanTokens computes the union of declared scopes per token name across every
+// project file (ADR 0030). The structured parsers ignore the TOKEN directive, so
+// deploy scans the raw file text: a `TOKEN "x" READ` line in pipe p contributes
+// scope READ:p; in datasource d it contributes READ:d (or APPEND:d). The same
+// name declared in several files yields one token whose scope is the union. The
+// resource name is the file basename, which is exactly the parsed Name.
+func scanTokens(dss []*model.Datasource, pipes []*model.Pipe) map[string][]string {
+	sets := map[string]map[string]bool{}
+	add := func(raw, resource string) {
+		for _, m := range tokenDeclRe.FindAllStringSubmatch(raw, -1) {
+			name, scope := m[1], strings.ToUpper(m[2])+":"+resource
+			if sets[name] == nil {
+				sets[name] = map[string]bool{}
+			}
+			sets[name][scope] = true
+		}
+	}
+	for _, ds := range dss {
+		add(ds.Raw, ds.Name)
+	}
+	for _, p := range pipes {
+		add(p.Raw, p.Name)
+	}
+	out := make(map[string][]string, len(sets))
+	for name, set := range sets {
+		out[name] = sortedKeys(set)
+	}
+	return out
+}
+
+// tokenDeclRe matches a `TOKEN "name" READ|APPEND` directive line, tolerating
+// leading whitespace and case (ADR 0030). Group 1 is the token name; group 2 is
+// the permission keyword.
+var tokenDeclRe = regexp.MustCompile(`(?mi)^\s*TOKEN\s+"([^"]+)"\s+([A-Za-z]+)`)
+
+// materializeTokens upserts file-declared resource tokens (ADR 0030). For each
+// declared name an existing token keeps its value and only its scopes are
+// rewritten (never rotate — rotation would break live clients); a brand-new name
+// gets a freshly generated value. Orphans (managed before, no longer declared)
+// are intentionally left untouched: revocation is an explicit act (`tr token rm`
+// / `--prune-tokens`), not a deploy side effect. Returns the materialized names,
+// sorted.
+func materializeTokens(ctx context.Context, store TokenStore, declared map[string][]string) ([]string, error) {
+	existing, err := store.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list tokens: %w", err)
+	}
+	byName := make(map[string]*model.Token, len(existing))
+	for _, t := range existing {
+		byName[t.Name] = t
+	}
+	names := sortedKeys(declared)
+	for _, name := range names {
+		tok := &model.Token{Name: name, Scopes: declared[name]}
+		if cur, ok := byName[name]; ok {
+			tok.Value = cur.Value // idempotent: reuse the existing value, never rotate
+		} else {
+			v, err := auth.GenerateValue()
+			if err != nil {
+				return nil, fmt.Errorf("generate value for token %q: %w", name, err)
+			}
+			tok.Value = v
+		}
+		if err := store.Put(ctx, tok); err != nil {
+			return nil, fmt.Errorf("materialize token %q: %w", name, err)
+		}
+	}
+	return names, nil
+}
+
+// sortedKeys returns the keys of m sorted lexically. Works for any map keyed by
+// string (scope sets, the declared-token map).
+func sortedKeys[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // applyBreaking rewrites ds's table to its new schema with no data-visibility gap
@@ -253,7 +388,7 @@ func applyBreaking(ctx context.Context, ch CH, ds *model.Datasource, overlap []s
 // its target table exists (ADR 0010). The target is normally one of the project's
 // datasources (known); otherwise a live-schema check lets an MV target a
 // pre-existing table.
-func ensureMaterialization(ctx context.Context, ch CH, m *model.Materialization, known map[string]bool) error {
+func ensureMaterialization(ctx context.Context, ch CH, m *model.Materialization, known map[string]bool, apply bool) error {
 	if m.TargetTable == "" {
 		return fmt.Errorf("materialization %q has no target table", m.Name)
 	}
@@ -265,6 +400,9 @@ func ensureMaterialization(ctx context.Context, ch CH, m *model.Materialization,
 		if len(live) == 0 {
 			return fmt.Errorf("materialization %q target table %q does not exist", m.Name, m.TargetTable)
 		}
+	}
+	if !apply {
+		return nil // dry run: target validated, MV creation skipped
 	}
 	return ch.CreateMaterializedView(ctx, m)
 }
@@ -320,6 +458,12 @@ func liveColumns(ctx context.Context, ch CH, table string) (map[string]string, e
 		"WHERE database = currentDatabase() AND table = {tbl:String} FORMAT JSON"
 	body, err := ch.Query(ctx, q, map[string]string{"param_tbl": table}, nil)
 	if err != nil {
+		// A not-yet-created workspace DB (common on --check for a fresh branch, or
+		// when DryRun skips CreateDatabase) has no live schema → treat as "table
+		// absent" so the plan is to create everything, rather than erroring.
+		if strings.Contains(err.Error(), "UNKNOWN_DATABASE") || strings.Contains(err.Error(), "doesn't exist") || strings.Contains(err.Error(), "does not exist") {
+			return map[string]string{}, nil
+		}
 		return nil, err
 	}
 	var parsed struct {
