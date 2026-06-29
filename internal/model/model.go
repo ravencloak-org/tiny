@@ -32,7 +32,6 @@ type Datasource struct {
 	Schema     []Column          // ordered, as written
 	Engine     string            // "MergeTree" if ENGINE omitted
 	EngineOpts map[string]string // ENGINE_* keys (full key incl. prefix) -> value, verbatim
-	Connector  string            // CONNECTOR value, e.g. "http_api" (informational in MVP)
 	Raw        string            // original file text
 }
 
@@ -119,12 +118,8 @@ type CHQuerier interface {
 	Query(ctx context.Context, sql string, params, settings map[string]string) ([]byte, error)
 }
 
-// CHPinger is a liveness/readiness probe for ClickHouse (ADR 0024).
-type CHPinger interface {
-	Ping(ctx context.Context) error
-}
-
-// Pinger is a generic readiness probe (Redis, ClickHouse).
+// Pinger is a generic readiness probe (Redis, ClickHouse) — Ping returns nil
+// when the dependency is reachable (ADR 0024).
 type Pinger interface {
 	Ping(ctx context.Context) error
 }

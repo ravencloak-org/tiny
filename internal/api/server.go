@@ -22,7 +22,7 @@ type Deps struct {
 	Pipes     model.PipeRunner // GET  /v0/pipes/{name}.json
 	Tokens    model.TokenStore // auth middleware
 	RedisPing model.Pinger     // readiness
-	CHPing    model.CHPinger   // readiness
+	CHPing    model.Pinger     // readiness
 
 	// Phase 2 add-ons (optional).
 	SQLProxy          http.Handler                      // GET/POST /v0/sql (ADR 0011)

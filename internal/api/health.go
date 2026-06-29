@@ -13,7 +13,7 @@ import (
 // a burst of /health/ready calls doesn't hammer the dependencies (ADR 0024).
 type readiness struct {
 	redis model.Pinger
-	ch    model.CHPinger
+	ch    model.Pinger
 	ttl   time.Duration
 
 	mu      sync.Mutex
@@ -21,7 +21,7 @@ type readiness struct {
 	lastErr error
 }
 
-func newReadiness(redis model.Pinger, ch model.CHPinger, ttl time.Duration) *readiness {
+func newReadiness(redis model.Pinger, ch model.Pinger, ttl time.Duration) *readiness {
 	return &readiness{redis: redis, ch: ch, ttl: ttl}
 }
 

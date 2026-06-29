@@ -51,11 +51,10 @@ func ParseFile(path string) (*model.Datasource, error) {
 // + referential validation (ADR 0027). It does NOT validate ClickHouse types.
 func Parse(name, raw string) (*model.Datasource, error) {
 	var (
-		cols      []model.Column
-		engine    string
-		opts      = map[string]string{}
-		connector string
-		inSchema  bool
+		cols     []model.Column
+		engine   string
+		opts     = map[string]string{}
+		inSchema bool
 	)
 
 	for _, line := range strings.Split(raw, "\n") {
@@ -89,11 +88,9 @@ func Parse(name, raw string) (*model.Datasource, error) {
 			engine = unquote(strings.TrimSpace(rest))
 		case strings.HasPrefix(upper, "ENGINE_"):
 			opts[upper] = unquote(strings.TrimSpace(rest))
-		case upper == "CONNECTOR":
-			connector = unquote(strings.TrimSpace(rest))
 		default:
-			// ponytail: unknown directives (DESCRIPTION, TAGS, TOKEN, ...) are
-			// ignored in MVP — they carry no meaning for ingest/query yet.
+			// ponytail: unknown directives (CONNECTOR, DESCRIPTION, TAGS, TOKEN, ...)
+			// are ignored in MVP — they carry no meaning for ingest/query yet.
 		}
 	}
 
@@ -106,7 +103,6 @@ func Parse(name, raw string) (*model.Datasource, error) {
 		Schema:     cols,
 		Engine:     engine,
 		EngineOpts: opts,
-		Connector:  connector,
 		Raw:        raw,
 	}
 	if err := validate(ds); err != nil {

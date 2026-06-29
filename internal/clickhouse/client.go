@@ -1,7 +1,7 @@
 // Package clickhouse is TinyRaven's ClickHouse adapter. One Client drives both
 // transports ClickHouse exposes (ADR 0013): the HTTP interface (8123) for
 // read-only queries + liveness, and the native protocol (TCP 9000) for the
-// batched insert hot path. It implements model.CHQuerier, model.CHPinger and
+// batched insert hot path. It implements model.CHQuerier, model.Pinger and
 // model.CHInserter.
 package clickhouse
 

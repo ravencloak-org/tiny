@@ -7,6 +7,7 @@ package apierr
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 // DBExceptionHeader passes the ClickHouse exception code through to the client
@@ -27,7 +28,7 @@ func WriteError(w http.ResponseWriter, status int, msg string) {
 // WriteErrorWithCode is WriteError plus the X-DB-Exception-Code header.
 func WriteErrorWithCode(w http.ResponseWriter, status, dbCode int, msg string) {
 	if dbCode != 0 {
-		w.Header().Set(DBExceptionHeader, itoa(dbCode))
+		w.Header().Set(DBExceptionHeader, strconv.Itoa(dbCode))
 	}
 	WriteError(w, status, msg)
 }
@@ -44,26 +45,4 @@ func EncodeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	var b [20]byte
-	i := len(b)
-	for n > 0 {
-		i--
-		b[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		b[i] = '-'
-	}
-	return string(b[i:])
 }

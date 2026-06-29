@@ -45,9 +45,6 @@ CONNECTOR http_api`
 	if got := ds.EngineOpts["ENGINE_TTL"]; got != "timestamp + interval 90 day" {
 		t.Errorf("ENGINE_TTL = %q", got)
 	}
-	if ds.Connector != "http_api" {
-		t.Errorf("Connector = %q, want http_api", ds.Connector)
-	}
 	if ds.Raw != raw {
 		t.Errorf("Raw not preserved verbatim")
 	}
