@@ -22,7 +22,7 @@ TinyRaven together (persistent volumes, health-gated). Set env in Dokploy:
 TR_ADMIN_TOKEN=<strong-secret>     # required
 TINYRAVEN_TAG=v0.1.1               # or latest
 TR_CLICKHOUSE_DB=tr_main           # optional
-TR_PORT=8000                       # optional
+TR_PORT=18000                      # optional host port (default 18000; avoid 80/8000/8080)
 ```
 
 The image ships the `examples/quickstart` datasource + pipe at `/project`, so the

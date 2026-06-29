@@ -35,8 +35,12 @@ services:
   tinyraven:
     image: ghcr.io/ravencloak-org/tiny:${TINYRAVEN_TAG:-latest}
     command: ["serve"]
+    # Host port defaults to an uncommon value to dodge collisions on shared
+    # hosts (Dokploy/Traefik often hold 80/8000/8080). Override with TR_PORT.
+    # With Dokploy domain routing, the host publish is optional — Traefik reaches
+    # the container's internal :8000 directly.
     ports:
-      - "${TR_PORT:-8000}:8000"
+      - "${TR_PORT:-18000}:8000"
     environment:
       TR_HTTP_ADDR: ":8000"
       TR_CLICKHOUSE_HTTP: "http://clickhouse:8123"
