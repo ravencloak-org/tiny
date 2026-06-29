@@ -3,10 +3,12 @@
   "checkpoint_id": "4e211dd7d8b4",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 3,
   "files_touched": [
     "PROMPT.md",
-    "docs/adr/0021-health-liveness-vs-readiness-dep-gating.md"
+    "docs/adr/0018-events-quarantine-validate-in-go.md",
+    "docs/adr/0021-health-liveness-vs-readiness-dep-gating.md",
+    "docs/adr/0023-events-request-compression.md"
   ],
   "sessions": [
     {
@@ -15,13 +17,20 @@
       "context": "/4e/211dd7d8b4/0/context.md",
       "content_hash": "/4e/211dd7d8b4/0/content_hash.txt",
       "prompt": "/4e/211dd7d8b4/0/prompt.txt"
+    },
+    {
+      "metadata": "/4e/211dd7d8b4/1/metadata.json",
+      "transcript": "/4e/211dd7d8b4/1/full.jsonl",
+      "context": "/4e/211dd7d8b4/1/context.md",
+      "content_hash": "/4e/211dd7d8b4/1/content_hash.txt",
+      "prompt": "/4e/211dd7d8b4/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 540,
-    "cache_creation_tokens": 6229,
-    "cache_read_tokens": 1530534,
-    "output_tokens": 4969,
-    "api_call_count": 8
+    "input_tokens": 1592,
+    "cache_creation_tokens": 22464,
+    "cache_read_tokens": 5427566,
+    "output_tokens": 21233,
+    "api_call_count": 26
   }
 }
