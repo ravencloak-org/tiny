@@ -113,7 +113,6 @@ tr deploy
 #### Package Managers
 - [ ] **Homebrew tap** (`tinyraven/homebrew-tinyraven`): `brew install tinyraven` → installs `tr` binary
 - [ ] **APT repo** (GitHub Pages): `sudo apt install tinyraven` → installs `tr` binary
-- [ ] **SDKMAN** vendor registration: `sdk install tinyraven` → installs `tr` binary
 - [ ] **Docker** multi-arch image: `ghcr.io/tinyraven/tinyraven:latest` (amd64 + arm64)
 - [ ] GitHub Actions auto-publishes Docker image + Homebrew tap + APT repo on each release
 
@@ -178,7 +177,7 @@ tr deploy
 - [ ] BI tool compatibility: Metabase, Apache Superset, Grafana, DBeaver connect via ClickHouse HTTP interface
 - [ ] Integration test suite (end-to-end: ingest → materialize → query)
 - [ ] Load test benchmarks: target ≥ 10k events/s on single `t3.large`
-- [ ] Optional dashboard template (separate repo: `tinyraven/dashboard-template`, Next.js + Recharts)
+- [ ] Optional dashboard template — **separate repo** (`tinyraven/dashboard-template`, Next.js + Recharts). Core stays API-first with **no built-in dashboard** (CLAUDE.md); this is an external, opt-in starter that talks to the API, not a bundled feature.
 
 ### Success Criteria
 ```bash
