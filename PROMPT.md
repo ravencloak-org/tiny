@@ -58,6 +58,7 @@ import (
 | File watching (dev) | `github.com/fsnotify/fsnotify` | Dev-only hot reload, debounced ~300ms. ADR 0020. mtime-poll is the zero-dep fallback. |
 | Logging | stdlib `log/slog` | No zap/zerolog. |
 | JSON / NDJSON | stdlib `encoding/json` | `goccy/go-json` only if profiling demands. |
+| Request decompression | stdlib `compress/gzip` + `klauspost/compress/zstd` | `/v0/events` `Content-Encoding: gzip`/`zstd`. zstd is transitive via `clickhouse-go` — no new direct dep. chi does **not** decompress requests. ADR 0023. |
 
 No new dependency is added for what a few lines of stdlib already do.
 
@@ -92,7 +93,8 @@ TinyRaven exposes **identical APIs** to Tinybird. Existing Tinybird client code 
 | `/v0/events` | POST | JSON/NDJSON event ingestion |
 | `/v0/pipes/{name}.json` | GET | Parameterized SQL query execution |
 | `/v0/sql` | GET | Direct SQL (read-only ClickHouse proxy) |
-| `/health` | GET | Health check |
+| `/health` | GET | Liveness — `200` if process up, zero dep checks. ADR 0021. |
+| `/health/ready` | GET | Readiness — `200`/`503` gated on Redis + ClickHouse (cached ~2–3s). ADR 0021. |
 | `/v0/metrics` | GET | Prometheus format metrics (via `prometheus/client_golang`) |
 
 ### File Format Parity
@@ -175,6 +177,8 @@ type Gatherer struct {
 }
 ```
 - **Delivery contract (see `docs/adr/0004-ingestion-ack-on-buffer.md`):** ack-on-buffer → `/v0/events` returns **202 Accepted**. Graceful drain on SIGTERM (no loss on restart). Hard crash loses up to one batch window (at-most-once) until the optional disk WAL ships (Phase 2/3).
+- **Validation + quarantine (see `docs/adr/0018-events-quarantine-validate-in-go.md`):** per-row validation in Go pre-buffer; schema-invalid **and** unparseable rows → `{ds}_quarantine` table, never batch-rejected; `202 {successful_rows, quarantined_rows}` even when zero succeed. `name=` required (400).
+- **Compression (see `docs/adr/0023-events-request-compression.md`):** `Content-Encoding: gzip`/`zstd` auto-decompressed. Wire cap (default 10 MB) on **compressed** bytes → 413; separate **decompressed** ceiling (default 256 MB, streamed) guards decompression bombs; unsupported encoding → 415.
 
 **Pipe templating (see `docs/adr/0003-pipe-templating-parameterized-queries.md`):**
 - **MVP (Phase 1): value params only.** `{{Type(name, default)}}` → ClickHouse parameterized query `{name:Type}` + params map (`param_<name>=...`). No string interpolation — injection-proof by construction. Never `text/template`. Pure substitution, zero parser.
@@ -308,7 +312,7 @@ docker run -p 8000:8000 \
 **Goal:** Working `tr local` dev environment
 
 **Deliverables:**
-- [ ] Go HTTP server (`net/http` + `chi`) with `/v0/events`, `/v0/pipes/:name.json`, `/health`
+- [ ] Go HTTP server (`net/http` + `chi`) with `/v0/events`, `/v0/pipes/:name.json`, `/health` (liveness) + `/health/ready` (readiness: Redis + ClickHouse, ADR 0021)
 - [ ] Gatherer: in-memory ring buffer, flush on `max(10,000 events, 5s timeout)`
 - [ ] Datasource schema registry (parse `.datasource` files, store in Redis)
 - [ ] Basic pipe executor: parse `{{Type(param)}}` SQL templates, inject validated params, execute via ClickHouse HTTP

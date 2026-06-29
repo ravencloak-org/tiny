@@ -12,3 +12,9 @@
 
 - Validation logic in Go must track CH type semantics closely enough to predict what the driver would accept; drift means a row passes Go but fails CH (falls back to the block-level failure). Keep the type-check aligned with the declared schema.
 - Quarantine tables are real ClickHouse tables per datasource — visible, queryable, parity with Tinybird.
+
+## Amendment — parse failures quarantine too (zero-success still 202)
+
+A row that fails to **parse as JSON at all** (truncated/garbled NDJSON line) is quarantined exactly like a row that parses but fails schema: raw line + parse error → `{datasource}_quarantine`, counted in `quarantined_rows`. The batch is never rejected for a bad line. Only **structural request errors** are 4xx: missing `name=` (400), body over the cap (413), zero-byte body (400, nothing to ingest).
+
+This holds even when **no** rows succeed: a fully-garbage body splits on `\n`, every chunk fails parse, all quarantine → `202 {"successful_rows":0,"quarantined_rows":N}`. No 422 floor on zero-success — it matches Tinybird's quarantine-not-reject contract, and a 422 would tempt drop-in clients into retry loops on data that will never parse.
