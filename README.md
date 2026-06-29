@@ -107,3 +107,59 @@ Pre-alpha — the codebase is being bootstrapped. The best way to help right now
 ## License
 
 [Apache 2.0](LICENSE).
+
+---
+
+## Deploy & Install
+
+> Distribution targets land in **Phase 4**. The one-liners and buttons below describe the intended experience; release artifacts publish on the first tagged release (`git tag vX.Y.Z`).
+
+### Install the `tr` binary
+
+```bash
+# macOS / Linux — Homebrew
+brew tap ravencloak-org/tinyraven
+brew install tinyraven            # installs the `tr` binary
+
+# Debian / Ubuntu — .deb from GitHub Releases
+sudo apt install ./tinyraven_*_linux_amd64.deb
+
+# RHEL / Fedora — .rpm from GitHub Releases
+sudo rpm -i tinyraven_*_linux_amd64.rpm
+
+# Docker
+docker run -p 8000:8000 ghcr.io/ravencloak-org/tiny:latest serve
+```
+
+Binaries for Linux/macOS/Windows × amd64/arm64, plus `.deb` / `.rpm` packages
+and SHA256 checksums, are built by [GoReleaser](.goreleaser.yaml) on every tag.
+
+### One-click cloud deploy
+
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/ravencloak-org/tiny)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?repo=https://github.com/ravencloak-org/tiny)
+[![Launch on AWS](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/new?stackName=tinyraven&templateURL=https://raw.githubusercontent.com/ravencloak-org/tiny/main/cloudformation/tinyraven-template.yaml)
+[![Deploy to DigitalOcean](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/ravencloak-org/tiny)
+
+### Kubernetes (Helm)
+
+```bash
+helm install tinyraven ./charts/tinyraven \
+  --set env.clickhouse.http=http://clickhouse:8123 \
+  --set env.redis.addr=redis:6379
+```
+
+### Per-platform guides
+
+| Platform | Guide |
+|----------|-------|
+| Docker | [docs/deploy/docker.md](docs/deploy/docker.md) |
+| Kubernetes / Helm | [docs/deploy/kubernetes.md](docs/deploy/kubernetes.md) |
+| Heroku | [docs/deploy/heroku.md](docs/deploy/heroku.md) |
+| AWS (CloudFormation) | [docs/deploy/aws.md](docs/deploy/aws.md) |
+| Railway | [docs/deploy/railway.md](docs/deploy/railway.md) |
+| Dokploy + Cloudflare | [docs/deploy/dokploy.md](docs/deploy/dokploy.md) |
+
+Coming from Tinybird? See [docs/migrate-from-tinybird.md](docs/migrate-from-tinybird.md) — install `tr`, point `TINYBIRD_HOST`, `tr deploy`.
+
+Every target needs an external **ClickHouse 26.3** and **Redis** — TinyRaven's `tr` server is stateless.

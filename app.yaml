@@ -1,0 +1,59 @@
+# DigitalOcean App Platform spec.
+# Deploy with: doctl apps create --spec app.yaml
+# (or use the "Deploy to DO" button in the README, then edit the env vars).
+#
+# ClickHouse is EXTERNAL (DigitalOcean has no managed ClickHouse) — point
+# TR_CLICKHOUSE_* at ClickHouse Cloud or your own host. Redis is provisioned
+# below as a managed dev database.
+name: tinyraven
+region: nyc
+services:
+  - name: tr
+    image:
+      registry_type: GHCR
+      registry: ravencloak-org
+      repository: tiny
+      tag: latest
+    run_command: tr serve
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: basic-xs
+    health_check:
+      http_path: /health/ready
+      initial_delay_seconds: 10
+      period_seconds: 10
+    envs:
+      - key: TR_HTTP_ADDR
+        scope: RUN_TIME
+        value: ":8000"
+      - key: TR_CLICKHOUSE_HTTP
+        scope: RUN_TIME
+        value: "https://CHANGE-ME.clickhouse.cloud:8443"
+      - key: TR_CLICKHOUSE_NATIVE
+        scope: RUN_TIME
+        value: "CHANGE-ME.clickhouse.cloud:9440"
+      - key: TR_CLICKHOUSE_DB
+        scope: RUN_TIME
+        value: "tr_main"
+      - key: TR_CLICKHOUSE_USER
+        scope: RUN_TIME
+        value: "default"
+      - key: TR_CLICKHOUSE_PASSWORD
+        scope: RUN_TIME
+        type: SECRET
+        value: ""
+      - key: TR_REDIS_ADDR
+        scope: RUN_TIME
+        # ${redis.HOSTNAME} / ${redis.PORT} are bound from the database below.
+        value: "${redis.HOSTNAME}:${redis.PORT}"
+      - key: TR_ADMIN_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+        value: "change-me"
+      - key: TR_PROJECT_DIR
+        scope: RUN_TIME
+        value: "/project"
+databases:
+  - name: redis
+    engine: REDIS
+    production: false

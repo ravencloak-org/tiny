@@ -1,0 +1,64 @@
+{
+  "name": "TinyRaven",
+  "description": "Open-source, self-hosted, drop-in alternative to Tinybird. Single Go binary (tr) in front of OSS ClickHouse + Redis.",
+  "repository": "https://github.com/ravencloak-org/tiny",
+  "logo": "https://raw.githubusercontent.com/ravencloak-org/tiny/main/site/public/logo.png",
+  "keywords": ["go", "clickhouse", "tinybird", "analytics", "events"],
+  "website": "https://github.com/ravencloak-org/tiny",
+  "success_url": "/health",
+  "stack": "heroku-24",
+  "buildpacks": [
+    {
+      "url": "heroku/go"
+    }
+  ],
+  "addons": [
+    {
+      "plan": "heroku-redis:mini",
+      "as": "REDIS"
+    }
+  ],
+  "env": {
+    "TR_HTTP_ADDR": {
+      "description": "Address the tr server binds to. On Heroku the router injects $PORT, so bind all interfaces on it.",
+      "value": ":$PORT",
+      "required": false
+    },
+    "TR_CLICKHOUSE_HTTP": {
+      "description": "ClickHouse HTTP endpoint (external — ClickHouse Cloud or your own server). Example: https://abc.clickhouse.cloud:8443",
+      "required": true
+    },
+    "TR_CLICKHOUSE_NATIVE": {
+      "description": "ClickHouse native TCP endpoint host:port used for inserts. Example: abc.clickhouse.cloud:9440",
+      "required": true
+    },
+    "TR_CLICKHOUSE_DB": {
+      "description": "ClickHouse database TinyRaven writes to.",
+      "value": "tr_main"
+    },
+    "TR_CLICKHOUSE_USER": {
+      "description": "ClickHouse user.",
+      "value": "default"
+    },
+    "TR_CLICKHOUSE_PASSWORD": {
+      "description": "ClickHouse password (leave blank for no auth).",
+      "required": false
+    },
+    "TR_ADMIN_TOKEN": {
+      "description": "Bootstrap admin bearer token — keep this secret.",
+      "generator": "secret"
+    },
+    "TR_PROJECT_DIR": {
+      "description": "Path to .datasource/.pipe project files inside the dyno.",
+      "value": "/app/project",
+      "required": false
+    }
+  },
+  "environments": {
+    "test": {
+      "scripts": {
+        "test": "go test ./..."
+      }
+    }
+  }
+}

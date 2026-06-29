@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  TinyRaven single-node deployment. Provisions a VPC, public subnet, security
+  group, an EC2 instance running the `tr` binary as a systemd service, an
+  ElastiCache Redis (single node), and an Elastic IP. ClickHouse is EXTERNAL —
+  pass its endpoint via the ClickHouseEndpoint parameter (ClickHouse Cloud or
+  your own host).
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.small
+      - t3.medium
+      - t3.large
+    Description: EC2 instance type for the TinyRaven server.
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Existing EC2 KeyPair to enable SSH access to the instance.
+  SSHLocation:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR allowed to SSH (port 22). Restrict this in production.
+    AllowedPattern: '^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})$'
+  TinyRavenVersion:
+    Type: String
+    Default: latest
+    Description: >-
+      tr release to download. Use "latest" or a tag like "v0.1.0".
+  ClickHouseEndpoint:
+    Type: String
+    Description: >-
+      ClickHouse HTTP endpoint, e.g. https://abc.clickhouse.cloud:8443
+      (external — this stack does not provision ClickHouse).
+  ClickHouseNative:
+    Type: String
+    Default: ""
+    Description: >-
+      ClickHouse native TCP endpoint host:port for inserts, e.g.
+      abc.clickhouse.cloud:9440. Leave blank to reuse the HTTP host on :9000.
+  ClickHouseDB:
+    Type: String
+    Default: tr_main
+    Description: ClickHouse database TinyRaven writes to.
+  RedisEndpoint:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional EXISTING Redis endpoint host:port. Leave blank to provision a
+      new single-node ElastiCache Redis in this stack.
+  AdminToken:
+    Type: String
+    NoEcho: true
+    Description: Bootstrap admin bearer token for TinyRaven. Keep it secret.
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: SSM-resolved latest Amazon Linux 2023 AMI (do not change).
+
+Conditions:
+  CreateRedis: !Equals [!Ref RedisEndpoint, ""]
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpc"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-igw"
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-subnet"
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-subnet-b"
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: TinyRaven server — HTTP 8000 + SSH.
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+          Description: TinyRaven HTTP API
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHLocation
+          Description: SSH
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateRedis
+    Properties:
+      GroupDescription: Redis access from the TinyRaven instance only.
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref InstanceSecurityGroup
+          Description: Redis from TinyRaven
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Condition: CreateRedis
+    Properties:
+      Description: TinyRaven Redis subnet group
+      SubnetIds:
+        - !Ref PublicSubnet
+        - !Ref PublicSubnetB
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Condition: CreateRedis
+    Properties:
+      Engine: redis
+      CacheNodeType: cache.t3.micro
+      NumCacheNodes: 1
+      VpcSecurityGroupIds:
+        - !GetAtt RedisSecurityGroup.GroupId
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-tinyraven"
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            set -euxo pipefail
+
+            # Resolve the tr download URL (latest vs pinned tag).
+            VERSION="${TinyRavenVersion}"
+            if [ "$VERSION" = "latest" ]; then
+              BASE="https://github.com/ravencloak-org/tiny/releases/latest/download"
+            else
+              BASE="https://github.com/ravencloak-org/tiny/releases/download/$VERSION"
+            fi
+
+            cd /tmp
+            curl -fsSL -o tinyraven.tar.gz "$BASE/tinyraven_${!VERSION#v}_linux_amd64.tar.gz" || \
+              curl -fsSL -o tinyraven.tar.gz "$BASE/tinyraven_linux_amd64.tar.gz"
+            tar -xzf tinyraven.tar.gz
+            install -m 0755 tr /usr/bin/tr
+
+            mkdir -p /project
+
+            cat >/etc/systemd/system/tinyraven.service <<EOF
+            [Unit]
+            Description=TinyRaven
+            After=network-online.target
+            Wants=network-online.target
+
+            [Service]
+            ExecStart=/usr/bin/tr serve
+            Restart=on-failure
+            Environment=TR_HTTP_ADDR=:8000
+            Environment=TR_PROJECT_DIR=/project
+            Environment=TR_CLICKHOUSE_HTTP=${ClickHouseEndpoint}
+            Environment=TR_CLICKHOUSE_NATIVE=${ClickHouseNative}
+            Environment=TR_CLICKHOUSE_DB=${ClickHouseDB}
+            Environment=TR_REDIS_ADDR=${RedisAddr}:6379
+            Environment=TR_ADMIN_TOKEN=${AdminToken}
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            systemctl daemon-reload
+            systemctl enable --now tinyraven.service
+          - RedisAddr: !If
+              - CreateRedis
+              - !GetAtt RedisCluster.RedisEndpoint.Address
+              - !Ref RedisEndpoint
+
+  TinyRavenEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref EC2Instance
+
+Outputs:
+  TinyRavenURL:
+    Description: Base URL of the TinyRaven HTTP API.
+    Value: !Sub "http://${TinyRavenEIP}:8000"
+  HealthCheck:
+    Description: Liveness endpoint.
+    Value: !Sub "http://${TinyRavenEIP}:8000/health"
+  DatabaseEndpoint:
+    Description: Redis endpoint TinyRaven uses (provisioned or supplied).
+    Value: !If
+      - CreateRedis
+      - !GetAtt RedisCluster.RedisEndpoint.Address
+      - !Ref RedisEndpoint
+  SSHCommand:
+    Description: SSH into the TinyRaven instance.
+    Value: !Sub "ssh -i ${KeyName}.pem ec2-user@${TinyRavenEIP}"

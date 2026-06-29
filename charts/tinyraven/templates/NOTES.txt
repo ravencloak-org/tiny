@@ -1,0 +1,31 @@
+TinyRaven has been deployed as release "{{ .Release.Name }}".
+
+The `tr serve` process is listening on port {{ .Values.containerPort }}.
+
+REMEMBER: ClickHouse and Redis are EXTERNAL to this chart. TinyRaven is
+configured to reach them at:
+  ClickHouse HTTP : {{ .Values.env.clickhouse.http }}
+  ClickHouse native: {{ .Values.env.clickhouse.native }}
+  Redis           : {{ .Values.env.redis.addr }}
+If those are wrong, the readiness probe (/health/ready) will fail.
+
+{{- if .Values.ingress.enabled }}
+
+Reachable via your Ingress hosts:
+{{- range .Values.ingress.hosts }}
+  http://{{ .host }}
+{{- end }}
+{{- else if eq .Values.service.type "ClusterIP" }}
+
+Port-forward to reach it locally:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "tinyraven.fullname" . }} 8000:{{ .Values.service.port }}
+  curl http://localhost:8000/health
+{{- end }}
+
+{{- if not .Values.existingSecret }}
+{{- if eq .Values.adminToken "change-me" }}
+
+WARNING: TR_ADMIN_TOKEN is still the default "change-me". Set `adminToken`
+(or point `existingSecret` at a Secret you manage) before exposing this.
+{{- end }}
+{{- end }}

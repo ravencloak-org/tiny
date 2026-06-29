@@ -1,0 +1,130 @@
+# GoReleaser v2 config for TinyRaven.
+# Binary: tr   |   Package: tinyraven   |   Module main: ./cmd/tr
+# Validate locally with:  goreleaser check
+# Cut a release by pushing a tag:  git tag v0.1.0 && git push origin v0.1.0
+# (see .github/workflows/goreleaser.yml)
+version: 2
+
+project_name: tinyraven
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: tr
+    main: ./cmd/tr
+    binary: tr
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # Windows on arm64 is uncommon for a server binary; skip it.
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: default
+    ids:
+      - tr
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    # tar.gz everywhere, zip on Windows.
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+# Linux system packages (.deb / .rpm) — package "tinyraven", binary "tr".
+nfpms:
+  - id: tinyraven
+    package_name: tinyraven
+    file_name_template: >-
+      {{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    vendor: Ravencloak
+    homepage: https://github.com/ravencloak-org/tiny
+    maintainer: Ravencloak <oss@ravencloak.org>
+    description: |-
+      TinyRaven — open-source, self-hosted, drop-in alternative to Tinybird.
+      Single Go binary (tr) in front of OSS ClickHouse + Redis.
+    license: Apache-2.0
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: ./LICENSE
+        dst: /usr/share/doc/tinyraven/LICENSE
+        type: doc
+      - src: ./README.md
+        dst: /usr/share/doc/tinyraven/README.md
+        type: doc
+
+# Homebrew tap — auto-updated on each release.
+# Requires repo secret HOMEBREW_TAP_GITHUB_TOKEN with push access to the tap repo.
+brews:
+  - name: tinyraven
+    ids:
+      - default
+    repository:
+      owner: ravencloak-org
+      name: homebrew-tinyraven
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/ravencloak-org/tiny
+    description: "Open-source, self-hosted, drop-in alternative to Tinybird (binary: tr)"
+    license: Apache-2.0
+    commit_author:
+      name: tinyraven-bot
+      email: oss@ravencloak.org
+    directory: Formula
+    install: |
+      bin.install "tr"
+    test: |
+      system "#{bin}/tr", "--version"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "merge conflict"
+      - "Merge pull request"
+      - "Merge branch"
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Bug fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: ravencloak-org
+    name: tiny
+  draft: false
+  prerelease: auto

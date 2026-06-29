@@ -1,0 +1,85 @@
+# Default values for the tinyraven chart.
+# ClickHouse and Redis are EXTERNAL dependencies — this chart does NOT deploy
+# them. Set `env.clickhouse.*` and `env.redis.addr` to your running services.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/ravencloak-org/tiny
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# The tr server listens here; the Service + probes target this port.
+containerPort: 8000
+
+# Runtime configuration (maps to the TR_* env vars the binary reads).
+env:
+  httpAddr: ":8000"
+  projectDir: "/project"
+  clickhouse:
+    http: "http://clickhouse:8123"
+    native: "clickhouse:9000"
+    db: "tr_main"
+    user: "default"
+    # Prefer setting the password via an existing Secret (see existingSecret).
+    password: ""
+  redis:
+    addr: "redis:6379"
+
+# Bootstrap admin token.
+#   - Set `adminToken` to have the chart create a Secret, OR
+#   - Set `existingSecret` to reference a Secret you manage yourself.
+adminToken: "change-me"
+# Name of a pre-existing Secret. When set, it overrides `adminToken`.
+# Expected keys: TR_ADMIN_TOKEN (required), TR_CLICKHOUSE_PASSWORD (optional).
+existingSecret: ""
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: tinyraven.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# Probes use the dedicated health endpoints (ADR 0024).
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
