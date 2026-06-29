@@ -13,9 +13,9 @@
 - [ ] Go HTTP server (`net/http` + `chi` router)
 - [ ] `POST /v0/events` — JSON / NDJSON ingestion
 - [ ] `GET /v0/pipes/:name.json` — parameterized SQL query
-- [ ] `GET /health` — health check endpoint
+- [ ] `GET /health` (liveness) + `GET /health/ready` (readiness: Redis + ClickHouse) — see ADR 0024
 - [ ] Gatherer: in-memory ring buffer, flush on `max(10,000 events, 5s timeout)`
-- [ ] `.datasource` file parser → PostgreSQL schema registry
+- [ ] `.datasource` file parser → Redis schema registry (ADR 0001 — Redis-only metadata)
 - [ ] `.pipe` file parser → `{{Type(param, default)}}` SQL template injection
 - [ ] Bearer token auth middleware → Redis lookup
 - [ ] `tr local start` → Docker Compose (ClickHouse + TinyRaven + Redis)
@@ -26,7 +26,7 @@
 curl -X POST localhost:8000/v0/events?name=events \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"user_id":"alice","event":"page_view"}'
-# → 202 Accepted {"status":"ok"}   (ack-on-buffer; see docs/adr/0004)
+# → 202 {"successful_rows":1,"quarantined_rows":0}  (ack-on-buffer ADR 0004; quarantine ADR 0018)
 
 curl "localhost:8000/v0/pipes/user_metrics.json?user_id=alice" \
   -H "Authorization: Bearer $TOKEN"
@@ -49,7 +49,7 @@ curl "localhost:8000/v0/pipes/user_metrics.json?user_id=alice" \
   - Validate `.datasource` + `.pipe` files
   - Diff schema against current ClickHouse state
   - Apply safe migrations (`ALTER TABLE ADD COLUMN` with nullable/default)
-- [ ] Per-token rate limiting (Redis counter, `RATE_LIMIT` in `.pipe` file)
+- [ ] Per-token rate limiting (in-memory `httprate` sliding-window, ADR 0015; `RATE_LIMIT` in `.pipe` file)
 - [ ] Tinybird-compatible error codes + JSON error shapes
 
 ### Success Criteria
@@ -119,19 +119,19 @@ tr deploy
 
 #### One-Click Cloud Deploy
 - [ ] **Heroku Button** (`app.json` in repo root):
-  - Add-ons: `heroku-postgresql:mini`, `heroku-redis:mini`
+  - Add-ons: `heroku-redis:mini` (ClickHouse external; no Postgres — ADR 0001)
   - Required env vars: `CLICKHOUSE_HOST`
   - Buildpack: `heroku/go`
   - `[![Deploy to Heroku](...)](https://heroku.com/deploy?template=https://github.com/tinyraven/tinyraven)`
 - [ ] **AWS CloudFormation** (`cloudformation/tinyraven-template.yaml`):
-  - Provisions: VPC, Subnet, Security Groups, EC2, RDS PostgreSQL, Elastic IP
+  - Provisions: VPC, Subnet, Security Groups, EC2, ElastiCache Redis, Elastic IP
   - UserData: downloads binary, creates systemd service, starts TinyRaven
-  - Parameters: `InstanceType` (default `t3.medium`), RDS credentials, `ClickHouseEndpoint`
+  - Parameters: `InstanceType` (default `t3.medium`), `RedisEndpoint`, `ClickHouseEndpoint`
   - Outputs: `TinyRavenURL`, `DatabaseEndpoint`, `SSHCommand`
   - Template uploaded to S3 → CloudFormation quick-launch URL in README
 - [ ] **Railway** (`railway.json`): `[Deploy to Railway]` button
 - [ ] **DigitalOcean** (`app.yaml`): `[Deploy to DigitalOcean]` button
-- [ ] **Docker Compose** (`docker-compose.yml`): includes ClickHouse + TinyRaven + Redis + PostgreSQL
+- [ ] **Docker Compose** (`docker-compose.yml`): includes ClickHouse + TinyRaven + Redis
 
 #### Kubernetes
 - [ ] Helm chart (`charts/tinyraven/`) with sane `values.yaml` defaults
@@ -171,9 +171,10 @@ tr deploy
 **Deliverable:** Production readiness, ecosystem integrations
 
 ### Must Ship
-- [ ] Kafka connector (consumer group, offset management, schema mapping)
-- [ ] S3 connector (batch import, scheduled `COPY` pipes)
-- [ ] PostgreSQL connector (table function, optional CDC via logical replication)
+> Connectors = ClickHouse-native engines declared in `.datasource`, not built services — see `docs/adr/0019-connectors-via-clickhouse-engines.md`. `tr deploy` creates the CH objects; ClickHouse does the pulling.
+- [ ] Kafka source: `.datasource` template for `ENGINE = Kafka(...)` + MV (CH runs the consumer)
+- [ ] S3 / files: `.datasource` templates for `s3()` / `url()` / `file()` + `ENGINE = S3`
+- [ ] PostgreSQL: `ENGINE = PostgreSQL(...)` / `postgresql()` table function, optional CDC via `MaterializedPostgreSQL`
 - [ ] BI tool compatibility: Metabase, Apache Superset, Grafana, DBeaver connect via ClickHouse HTTP interface
 - [ ] Integration test suite (end-to-end: ingest → materialize → query)
 - [ ] Load test benchmarks: target ≥ 10k events/s on single `t3.large`
@@ -181,13 +182,13 @@ tr deploy
 
 ### Success Criteria
 ```bash
-# Kafka connector in .datasource file
-CONNECTOR = kafka
-CONNECTOR_CONFIG = {
-  "brokers": "kafka:9092",
-  "topic": "events",
-  "consumer_group": "tinyraven"
-}
+# Kafka source in .datasource file (CH-native engine — ADR 0019)
+ENGINE = Kafka
+ENGINE_KAFKA_BROKER_LIST = kafka:9092
+ENGINE_KAFKA_TOPIC_LIST = events
+ENGINE_KAFKA_GROUP_NAME = tinyraven
+ENGINE_KAFKA_FORMAT = JSONEachRow
+# + a materialized view from this datasource into the target table
 
 # BI tool (Metabase)
 # Connect → ClickHouse → host: clickhouse.tinyraven.local → browse tables → build dashboard
