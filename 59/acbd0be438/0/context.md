@@ -223,3 +223,32 @@ working now
 
 phase 5 first and if possible phase 4 in parallel using different worktree
 
+### Prompt 51
+
+where to create give me endpoints to hit
+
+### Prompt 52
+
+➜  tiny git:(main) curl https://tiny-api.ravencloak.org/health
+curl -X POST "https://tiny-api.ravencloak.org/v0/events?name=events" \
+  -H "Authorization: Bearer $T" \
+  -d '{"user_id":"alice","event":"page_view","timestamp":"2026-06-29 12:00:00"}'
+curl "https://tiny-api.ravencloak.org/v0/pipes/user_metrics.json?user_id=alice" \
+  -H "Authorization: Bearer $T"
+Tinybird clients: set TINYBIRD_HOST=https://tiny-api.ravencloak.org.
+{"status":"ok"}
+{"error":"missing authentication token"}
+{"error":...
+
+### Prompt 53
+
+what token in dokploy?
+
+### Prompt 54
+
+what's the token used for? do frontend apps have this token to connect to backend? how does it work?
+
+### Prompt 55
+
+build token create + scope enforcement
+
