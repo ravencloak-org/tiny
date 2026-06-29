@@ -175,3 +175,11 @@ complete phase 1 + 2 and create release via git tag to my dokploy instance and c
 
 yes one click docker compose
 
+### Prompt 40
+
+let's use different port, common ports might be blocked 
+Container tiny-backend-btyefk-tinyraven-1 Starting
+Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint tiny-backend-btyefk-tinyraven-1 (841b67629d3e0cb71e210618c9e00010dde18814a2c1050e7f522e23891648ba): Bind for 127.0.0.1:8000 failed: port is already allocated
+Error: ❌ Docker command failed
+Error occurred ❌, check the logs for details.
+
