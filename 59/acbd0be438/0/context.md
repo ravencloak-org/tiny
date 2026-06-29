@@ -183,3 +183,11 @@ Error response from daemon: failed to set up container networking: driver failed
 Error: ❌ Docker command failed
 Error occurred ❌, check the logs for details.
 
+### Prompt 41
+
+yes
+
+### Prompt 42
+
+yes add cloudflared to the compose, but i also added in dashboard a cname but getting a 404
+

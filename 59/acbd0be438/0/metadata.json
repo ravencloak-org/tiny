@@ -3,7 +3,7 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "8800a864-e1cb-4d13-9744-9d16ef2a83c7",
   "strategy": "manual-commit",
-  "created_at": "2026-06-29T08:21:27.850616Z",
+  "created_at": "2026-06-29T08:30:41.7721Z",
   "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
@@ -11,23 +11,23 @@
     "docs/deploy/dokploy.md"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "b6135d87-0152-4e92-a172-e8b1bb0fa846",
-  "checkpoint_transcript_start": 2869,
-  "transcript_lines_at_start": 2869,
+  "transcript_identifier_at_start": "12e6816e-53d0-48e6-8aaa-72dbd0e06d2c",
+  "checkpoint_transcript_start": 2938,
+  "transcript_lines_at_start": 2938,
   "token_usage": {
-    "input_tokens": 517,
-    "cache_creation_tokens": 354874,
-    "cache_read_tokens": 3464675,
-    "output_tokens": 13124,
-    "api_call_count": 8
+    "input_tokens": 763,
+    "cache_creation_tokens": 26958,
+    "cache_read_tokens": 5498868,
+    "output_tokens": 21350,
+    "api_call_count": 11
   },
   "initial_attribution": {
-    "calculated_at": "2026-06-29T08:21:27.516957Z",
+    "calculated_at": "2026-06-29T08:30:41.431526Z",
     "agent_lines": 0,
-    "human_added": 150,
+    "human_added": 201,
     "human_modified": 0,
     "human_removed": 0,
-    "total_committed": 150,
+    "total_committed": 201,
     "agent_percentage": 0
   }
 }
