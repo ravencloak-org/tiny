@@ -1,0 +1,19 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 2%
+        informational: true
+    patch:
+      default:
+        informational: true
+
+comment:
+  layout: "reach, diff, files"
+  require_changes: true
+
+# Generated glue and the build anchor aren't meaningful coverage targets.
+ignore:
+  - "cmd/tr/serve_stubs.go"
+  - "internal/buildanchor/**"

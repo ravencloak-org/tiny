@@ -7,15 +7,15 @@ import "os"
 
 // Config is the resolved server configuration.
 type Config struct {
-	HTTPAddr   string // listen address, e.g. ":8000"
-	CHHTTPURL  string // ClickHouse HTTP, e.g. "http://localhost:8123"
+	HTTPAddr     string // listen address, e.g. ":8000"
+	CHHTTPURL    string // ClickHouse HTTP, e.g. "http://localhost:8123"
 	CHNativeAddr string // ClickHouse native TCP, e.g. "localhost:9000"
-	CHDatabase string // target database, e.g. "tr_main"
-	CHUser     string
-	CHPassword string
-	RedisAddr  string // e.g. "localhost:6379"
-	ProjectDir string // dir holding .datasource/.pipe files
-	AdminToken string // bootstrap ADMIN token; empty disables bootstrap
+	CHDatabase   string // target database, e.g. "tr_main"
+	CHUser       string
+	CHPassword   string
+	RedisAddr    string // e.g. "localhost:6379"
+	ProjectDir   string // dir holding .datasource/.pipe files
+	AdminToken   string // bootstrap ADMIN token; empty disables bootstrap
 }
 
 // Load builds a Config from defaults overlaid by TINYBIRD_*/TR_* env vars.

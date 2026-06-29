@@ -16,9 +16,9 @@ import (
 
 // Deps are the concrete subsystem implementations the HTTP layer drives.
 type Deps struct {
-	Ingester model.Ingester    // POST /v0/events
-	Pipes    model.PipeRunner  // GET  /v0/pipes/{name}.json
-	Tokens   model.TokenStore  // auth middleware
+	Ingester  model.Ingester   // POST /v0/events
+	Pipes     model.PipeRunner // GET  /v0/pipes/{name}.json
+	Tokens    model.TokenStore // auth middleware
 	RedisPing model.Pinger     // readiness
 	CHPing    model.CHPinger   // readiness
 

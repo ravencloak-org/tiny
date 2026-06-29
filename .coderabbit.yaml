@@ -1,0 +1,26 @@
+# CodeRabbit configuration — https://docs.coderabbit.ai
+language: en-US
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!**/*_test.go.snap"
+    - "!docs/adr/**"
+  path_instructions:
+    - path: "internal/**/*.go"
+      instructions: >-
+        TinyRaven is a Tinybird-API-compatible analytics backend in Go.
+        Enforce: chi router only (no gin/echo/fiber); binary is `tr`, package
+        `tinyraven`; ClickHouse OSS only; API-first (no dashboard). Pipe params
+        MUST use ClickHouse parameterized queries ({name:Type}), never string
+        interpolation into SQL. Flag any SQL built by concatenating user input.
+        Architecture decisions live in docs/adr — flag changes that contradict a
+        locked ADR.
+chat:
+  auto_reply: true

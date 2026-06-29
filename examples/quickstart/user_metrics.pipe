@@ -1,0 +1,7 @@
+NODE endpoint
+SQL >
+    SELECT user_id, count() AS count
+    FROM events
+    WHERE user_id = {{String(user_id)}}
+    GROUP BY user_id
+TYPE endpoint

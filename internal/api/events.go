@@ -44,8 +44,8 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	encodeJSON(w, http.StatusAccepted, map[string]int{
-		"successful_rows":   ok,
-		"quarantined_rows":  quarantined,
+		"successful_rows":  ok,
+		"quarantined_rows": quarantined,
 	})
 }
 

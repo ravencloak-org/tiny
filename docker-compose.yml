@@ -1,0 +1,57 @@
+# Local dev stack: ClickHouse + Redis + TinyRaven (`tr local start`).
+# ClickHouse pinned to 26.3 LTS (ADR 0009). Redis runs AOF-persisted as the
+# metadata system of record (ADR 0001).
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.3
+    ports:
+      - "8123:8123" # HTTP interface (queries, ADR 0013)
+      - "9000:9000" # native protocol (inserts, ADR 0013)
+    environment:
+      CLICKHOUSE_DB: tr_main
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"] # AOF persistence (ADR 0001)
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - redis_data:/data
+
+  tinyraven:
+    build: .
+    command: ["serve"]
+    ports:
+      - "8000:8000"
+    environment:
+      TR_HTTP_ADDR: ":8000"
+      TR_CLICKHOUSE_HTTP: "http://clickhouse:8123"
+      TR_CLICKHOUSE_NATIVE: "clickhouse:9000"
+      TR_CLICKHOUSE_DB: "tr_main"
+      TR_REDIS_ADDR: "redis:6379"
+      TR_PROJECT_DIR: "/project"
+      TR_ADMIN_TOKEN: "${TR_ADMIN_TOKEN:-local-dev-token}"
+    volumes:
+      - .:/project
+    depends_on:
+      clickhouse: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+volumes:
+  clickhouse_data:
+  redis_data:

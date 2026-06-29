@@ -7,3 +7,13 @@
 # Scratch
 *.log
 .DS_Store
+
+# Go
+/bin/
+/tr
+*.test
+*.out
+coverage.txt
+
+# Local config (secrets, per-machine) — ADR config split
+.tinyraven/

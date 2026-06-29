@@ -99,9 +99,11 @@ func (t Token) HasScope(s string) bool {
 // ---- Contract interfaces (implemented by the subsystem packages) ----
 
 // CHInserter does batched native-protocol inserts (clickhouse-go/v2, TCP 9000;
-// ADR 0013). rows are JSONEachRow lines (one JSON object per row).
+// ADR 0013). The caller passes the datasource (for column order/types) and rows
+// already parsed + validated against its schema, so the implementation can build
+// a typed native batch (PrepareBatch).
 type CHInserter interface {
-	Insert(ctx context.Context, table string, rows [][]byte) error
+	Insert(ctx context.Context, ds *Datasource, rows []map[string]any) error
 }
 
 // CHQuerier runs read-only queries over the ClickHouse HTTP interface (8123;
