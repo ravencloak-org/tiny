@@ -1,0 +1,311 @@
+Please analyze this codebase and create a CLAUDE.md file, which will be given to future instances of Claude Code to operate in this repository.
+
+What to add:
+1. Commands that will be commonly used, such as how to build, lint, and run tests. Include the necessary commands to develop in this codebase, such as how to run a single test.
+2. High-level code architecture and structure so that future instances can be productive more quickly. Focus on the "big picture" architecture that requires reading multiple files to understand.
+
+Usage notes:
+- If there's already a CLAUDE.md, suggest improvements to it.
+- When you make the initial CLAUDE.md, do not repeat yourself and do not include obvious instructions like "Provide helpful error messages to users", "Write unit tests for all new utilities", "Never include sensitive information (API keys, tokens) in code or commits".
+- Avoid listing every component or file structure that can be easily discovered.
+- Don't include generic development practices.
+- If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (in .github/copilot-instructions.md), make sure to include the important parts.
+- If there is a README.md, make sure to include the important parts.
+- Do not make up information such as "Common Development Tasks", "Tips for Development", "Support and Documentation" unless this is expressly included in other files that you read.
+- Be sure to prefix the file with the following text:
+
+```
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+```
+
+---
+
+Let's create a README for the github page, create github issues for the milestones, create milestone in gh, and club it into phases
+
+---
+
+Base directory for this skill: /Users/jobinlawrance/.claude/skills/grill-with-docs
+
+<what-to-do>
+
+Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time, waiting for feedback on each question before continuing.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
+</what-to-do>
+
+<supporting-info>
+
+## Domain awareness
+
+During codebase exploration, also look for existing documentation:
+
+### File structure
+
+Most repos have a single context:
+
+```
+/
+├── CONTEXT.md
+├── docs/
+│   └── adr/
+│       ├── 0001-event-sourced-orders.md
+│       └── 0002-postgres-for-write-model.md
+└── src/
+```
+
+If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The map points to where each one lives:
+
+```
+/
+├── CONTEXT-MAP.md
+├── docs/
+│   └── adr/                          ← system-wide decisions
+├── src/
+│   ├── ordering/
+│   │   ├── CONTEXT.md
+│   │   └── docs/adr/                 ← context-specific decisions
+│   └── billing/
+│       ├── CONTEXT.md
+│       └── docs/adr/
+```
+
+Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. If no `docs/adr/` exists, create it when the first ADR is needed.
+
+## During the session
+
+### Challenge against the glossary
+
+When the user uses a term that conflicts with the existing language in `CONTEXT.md`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
+
+### Sharpen fuzzy language
+
+When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
+
+### Discuss concrete scenarios
+
+When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
+
+### Cross-reference with code
+
+When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+
+### Update CONTEXT.md inline
+
+When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
+
+`CONTEXT.md` should be totally devoid of implementation details. Do not treat `CONTEXT.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
+
+### Offer ADRs sparingly
+
+Only offer to create an ADR when all three are true:
+
+1. **Hard to reverse** — the cost of changing your mind later is meaningful
+2. **Surprising without context** — a future reader will wonder "why did they do it this way?"
+3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
+
+If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+
+</supporting-info>
+
+---
+
+umm how does platform like tinybird work? does it use a separate postgres db for metadata or maybe we can give two option, one with postgres and one with sqlite maybe, like the self hosted versions on local laptop use sqlite and prod versions on cloud uses postgres, maybe we can use paradedb extenstion if needed as well
+
+---
+
+nah lets go with redis only then
+
+---
+
+works
+
+---
+
+parity
+
+---
+
+for mvp the most used and common ones, full later
+
+---
+
+ack-on-buffer + 202 + graceful drain, WAL later
+
+---
+
+Base directory for this skill: /Users/jobinlawrance/.claude/plugins/cache/caveman/caveman/655b7d9c5431/skills/caveman
+
+Respond terse like smart caveman. All technical substance stay. Only fluff die.
+
+## Persistence
+
+ACTIVE EVERY RESPONSE. No revert after many turns. No filler drift. Still active if unsure. Off only: "stop caveman" / "normal mode".
+
+Default: **full**. Switch: `/caveman lite|full|ultra`.
+
+## Rules
+
+Drop: articles (a/an/the), filler (just/really/basically/actually/simply), pleasantries (sure/certainly/of course/happy to), hedging. Fragments OK. Short synonyms (big not extensive, fix not "implement a solution for"). Technical terms exact. Code blocks unchanged. Errors quoted exact.
+
+Pattern: `[thing] [action] [reason]. [next step].`
+
+Not: "Sure! I'd be happy to help you with that. The issue you're experiencing is likely caused by..."
+Yes: "Bug in auth middleware. Token expiry check use `<` not `<=`. Fix:"
+
+## Intensity
+
+| Level | What change |
+|-------|------------|
+| **lite** | No filler/hedging. Keep articles + full sentences. Professional but tight |
+| **full** | Drop articles, fragments OK, short synonyms. Classic caveman |
+| **ultra** | Abbreviate prose words (DB/auth/config/req/res/fn/impl), strip conjunctions, arrows for causality (X → Y), one word when one word enough. Code symbols, function names, API names, error strings: never abbreviate |
+| **wenyan-lite** | Semi-classical. Drop filler/hedging but keep grammar structure, classical register |
+| **wenyan-full** | Maximum classical terseness. Fully 文言文. 80-90% character reduction. Classical sentence patterns, verbs precede objects, subjects often omitted, classical particles (之/乃/為/其) |
+| **wenyan-ultra** | Extreme abbreviation while keeping classical Chinese feel. Maximum compression, ultra terse |
+
+Example — "Why React component re-render?"
+- lite: "Your component re-renders because you create a new object reference each render. Wrap it in `useMemo`."
+- full: "New object ref each render. Inline object prop = new ref = re-render. Wrap in `useMemo`."
+- ultra: "Inline obj prop → new ref → re-render. `useMemo`."
+- wenyan-lite: "組件頻重繪，以每繪新生對象參照故。以 useMemo 包之。"
+- wenyan-full: "物出新參照，致重繪。useMemo .Wrap之。"
+- wenyan-ultra: "新參照→重繪。useMemo Wrap。"
+
+Example — "Explain database connection pooling."
+- lite: "Connection pooling reuses open connections instead of creating new ones per request. Avoids repeated handshake overhead."
+- full: "Pool reuse open DB connections. No new connection per request. Skip handshake overhead."
+- ultra: "Pool = reuse DB conn. Skip handshake → fast under load."
+- wenyan-full: "池reuse open connection。不每req新開。skip handshake overhead。"
+- wenyan-ultra: "池reuse conn。skip handshake → fast。"
+
+## Auto-Clarity
+
+Drop caveman when:
+- Security warnings
+- Irreversible action confirmations
+- Multi-step sequences where fragment order or omitted conjunctions risk misread
+- Compression itself creates technical ambiguity (e.g., `"migrate table drop column backup first"` — order unclear without articles/conjunctions)
+- User asks to clarify or repeats question
+
+Resume caveman after clear part done.
+
+Example — destructive op:
+> **Warning:** This will permanently delete all rows in the `users` table and cannot be undone.
+> ```sql
+> DROP TABLE users;
+> ```
+> Caveman resume. Verify backup exist first.
+
+## Boundaries
+
+Code/commits/PRs: write normal. "stop caveman" or "normal mode": revert. Level persist until changed or session end.
+
+---
+
+opaque+redis as above
+
+---
+
+auto-safe + refuse-breaking, shadow-swap phase 3
+
+---
+
+cobra+viper, capture it and continue grilling
+
+---
+
+schema-only + explicit tr branch rm, continue grilling
+
+---
+
+secret-vs-not split, continue grilling
+
+---
+
+default MergeTree + reject-undefined, continue grilling
+
+---
+
+cut S3/MinIO, continue grilling.
+
+---
+
+also cli deploy or init or some command should show default clickhouse path with default user and password, or option to spin a new instance of clickhouse. let's lock in the latest clickhouse version and check which new features in clickhouse we can built on top of instead of reinventing the wheel.
+
+---
+
+yes all four, capture and continue grilling
+
+---
+
+makes sense, go for recomended
+
+---
+
+structural parity, continue grilling
+
+---
+
+split
+
+---
+
+fix Failed with non-blocking status code: /bin/sh: /opt/homebrew/Cellar/node/26.0.0/bin/node: No such file or directory i have node v26.4.0
+
+---
+
+continue
+
+---
+
+Continue from where you left off.
+
+---
+
+continue
+
+---
+
+Continue from where you left off.
+
+---
+
+continue
+
+---
+
+is everything changed pushed to github?
+
+---
+
+create /handoff document for the grill and what else needs to be grilled. i want to transfer to different agent
+
+---
+
+Base directory for this skill: /Users/jobinlawrance/.claude/skills/handoff
+
+Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+
+Include a "suggested skills" section in the document, which suggests skills that the agent should invoke.
+
+Do not duplicate content already captured in other artifacts (PRDs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
+
+Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
+
+If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly.
+
+
+ARGUMENTS: Grilling session for TinyRaven design (grill-with-docs). Document decisions locked so far and what remains to grill, so a different agent can continue the interview.
+
+---
+
+move it to the cur repo dir
+
+---
+
+and commit and push to gh as well

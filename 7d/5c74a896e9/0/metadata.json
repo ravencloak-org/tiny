@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "7d5c74a896e9",
+  "session_id": "4a720074-2dd7-4aed-b82b-370ec4890a6a",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-29T04:46:14.961804Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "HANDOFF.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "c4ef95e2-0c8e-40a7-8bfb-70f6908fd701",
+  "token_usage": {
+    "input_tokens": 38080,
+    "cache_creation_tokens": 978894,
+    "cache_read_tokens": 31146809,
+    "output_tokens": 105352,
+    "api_call_count": 134
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-29T04:46:14.864028Z",
+    "agent_lines": 93,
+    "human_added": 533,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 626,
+    "agent_percentage": 14.856230031948881
+  }
+}
