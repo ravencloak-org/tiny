@@ -211,3 +211,11 @@ yes add the systemd service
 
 https://tiny.ravencloak.org/ still gives a 404, is the website not deployed?
 
+### Prompt 48
+
+redployed, still 404
+
+### Prompt 49
+
+working now
+
