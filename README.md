@@ -65,7 +65,7 @@ tr deploy        # same .datasource / .pipe files, your backend
             │                                                     ▲
             ▼                                                     │
    parse {{Type(...)}} ─▶ validate/escape ─▶ ClickHouse HTTP ─────┘
-                                                  FORMAT JSONEachRow
+                                              FORMAT JSON / JSONEachRow
 ```
 
 | Store | Role |

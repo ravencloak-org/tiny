@@ -32,7 +32,7 @@ TinyRaven is an **open-source, self-hosted, drop-in alternative to Tinybird**, b
 
 **HTTP Framework:** `net/http` + `chi` router (minimal, idiomatic, MIT licensed). chi is a thin router over stdlib `http.Handler`, not a framework.
 
-**ClickHouse access (see `docs/adr/0013-clickhouse-access-split-native-insert-http-query.md`):** split — `clickhouse-go` v2 native driver (TCP 9000) for Gatherer batched inserts; ClickHouse HTTP interface (8123) via stdlib `net/http` for `/v0/pipes` + `/v0/sql` (stream `FORMAT JSONEachRow`, header passthrough, readonly user).
+**ClickHouse access (see `docs/adr/0013-clickhouse-access-split-native-insert-http-query.md`):** split — `clickhouse-go` v2 native driver (TCP 9000) for Gatherer batched inserts; ClickHouse HTTP interface (8123) via stdlib `net/http` for `/v0/pipes` + `/v0/sql` (`.json` → CH `FORMAT JSON` envelope passthrough, `.ndjson` → `JSONEachRow`, `.csv` → `CSVWithNames`; header passthrough, readonly user; no injected LIMIT, ceiling via CH profile. ADR 0025).
 
 ```go
 import (
@@ -193,6 +193,8 @@ type Gatherer struct {
 - MVP scopes: `ADMIN`, `WORKSPACE:READ_ALL`, per-pipe `READ`. Resource tokens declared in `.pipe`/`.datasource`, materialized on `tr deploy`.
 
 **SQL read-only enforcement (see `docs/adr/0011-sql-readonly-via-clickhouse-profile.md`):** `/v0/sql` + pipe reads run under a dedicated ClickHouse `readonly=2` user + resource caps — ClickHouse enforces, TinyRaven never parses SQL to block writes. Separate read-write CH user for Gatherer + `tr deploy` DDL.
+
+**Pipe result governance + browser access (see `docs/adr/0025-pipe-result-governance-cors-query-token.md`):** no framework-injected `LIMIT` (pipe SQL authoritative — parity); pagination is the author's job via value-params (`LIMIT {{Int(limit,100)}} OFFSET {{Int(offset,0)}}`). Server guardrails = CH settings on the readonly profile (`max_result_rows` / `max_result_bytes` / `max_execution_time`), over-cap → CH error → error parity (ADR 0012). CORS enabled on `/v0/pipes/*` GET; `?token=` query param accepted (simple GET, no preflight, no `go-chi/cors` dep) — flagged: query-string token leaks to logs/`Referer`, so Bearer for server-to-server, `?token=` (resource-scoped) only for browser embedding.
 
 **Error contract (see `docs/adr/0012-structural-error-parity.md`):** structural parity with Tinybird — JSON `{"error":"<msg>"}`, status mapping (400/401/403/404/429/500), and `X-DB-Exception-Code` header passing through the ClickHouse exception code. Structure + codes, not message text.
 

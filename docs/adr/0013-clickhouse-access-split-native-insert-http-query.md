@@ -3,7 +3,7 @@
 TinyRaven talks to ClickHouse two ways, each chosen for its path:
 
 - **Inserts (Gatherer flush):** `clickhouse-go` v2 native driver over the TCP protocol (9000). Batched columnar inserts — the path that reaches the 10k events/s goal.
-- **Queries (`/v0/pipes`, `/v0/sql`):** ClickHouse HTTP interface (8123) via Go stdlib `net/http`. Stream `FORMAT JSONEachRow` straight to the client; clean fit for `X-DB-Exception-Code` passthrough (ADR 0012) and the `readonly=2` user (ADR 0011).
+- **Queries (`/v0/pipes`, `/v0/sql`):** ClickHouse HTTP interface (8123) via Go stdlib `net/http`. Forward the chosen CH `FORMAT` straight to the client (`.json` → `FORMAT JSON` envelope, `.ndjson` → `JSONEachRow`, `.csv` → `CSVWithNames`; see ADR 0025 for the per-extension mapping + result ceiling); clean fit for `X-DB-Exception-Code` passthrough (ADR 0012) and the `readonly=2` user (ADR 0011).
 
 The inbound HTTP server is separate and already decided: stdlib `net/http` + `chi` router (no gin/echo/fiber).
 
