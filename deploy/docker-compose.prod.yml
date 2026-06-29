@@ -53,6 +53,30 @@ services:
       clickhouse: { condition: service_healthy }
       redis: { condition: service_healthy }
     restart: unless-stopped
+    # --- Option C: DockFlare (label-driven tunnel, host-wide control plane) ---
+    # Run DockFlare as its OWN stack (upstream compose) on a shared external
+    # network, then uncomment these so it auto-creates the tunnel route + DNS for
+    # tiny.ravencloak.org (no dashboard step). DockFlare reaches this container by
+    # the `tinyraven` alias only if both share a docker network — see docs.
+    # labels:
+    #   - dockflare.enable=true
+    #   - dockflare.hostname=tiny.ravencloak.org
+    #   - dockflare.service=http://tinyraven:8000
+
+  # Cloudflare Tunnel — exposes tinyraven at your public hostname with no open
+  # ports. Reaches the app over the compose network as http://tinyraven:8000.
+  # Enable by setting BOTH:  CF_TUNNEL_TOKEN=<token>  and  COMPOSE_PROFILES=tunnel
+  # Route is configured in the Cloudflare Zero Trust dashboard (Public Hostname:
+  # tiny.ravencloak.org -> HTTP -> http://tinyraven:8000), which also manages DNS.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN:-}
+    depends_on:
+      - tinyraven
+    restart: unless-stopped
+    profiles: ["tunnel"]
 
 volumes:
   clickhouse_data:

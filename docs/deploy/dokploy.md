@@ -66,21 +66,48 @@ Dokploy **Deploy Webhook** on every `v*` tag.
 
 Without the secret the step no-ops (CI stays green).
 
-## 5. Cloudflare Tunnel → tiny.ravencloak.org
+## 5. Expose at tiny.ravencloak.org (Cloudflare Tunnel)
 
-Use `deploy/cloudflared/config.example.yml`. On a host with `cloudflared`
-installed and authenticated (`cloudflared login` against the ravencloak.org zone):
+> **404 troubleshooting:** a 404 at `tiny.ravencloak.org` means the request
+> reached Cloudflare but **no tunnel ingress rule matches that hostname** — the
+> tunnel isn't running or has no route to the service. A hand-made CNAME is NOT
+> enough: a token/remotely-managed tunnel manages its own DNS and routes are set
+> by *Public Hostname* (or DockFlare labels), not a manual record. Also, when
+> cloudflared runs in the compose, the service URL is the **internal**
+> `http://tinyraven:8000`, never the host's `:18000`.
 
-```bash
-cloudflared tunnel create tinyraven
-cloudflared tunnel route dns tinyraven tiny.ravencloak.org
-# fill TUNNEL_ID + credentials path + the `service:` target (Dokploy app addr)
-cloudflared tunnel --config deploy/cloudflared/config.yml run tinyraven
+### Option A — cloudflared in the compose (recommended, simplest)
+
+The prod compose ships a `cloudflared` service behind the `tunnel` profile. In
+Cloudflare Zero Trust → Networks → Tunnels, create a tunnel, copy its **token**,
+then in Dokploy set:
+
+```
+CF_TUNNEL_TOKEN=<tunnel token>
+COMPOSE_PROFILES=tunnel
 ```
 
-Run the tunnel as a Dokploy service / systemd unit alongside the app. Point
-`ingress[0].service` at the app's internal address (Dokploy service name `:8000`,
-or the Dokploy Traefik proxy if you route by Host header).
+Redeploy. Then in the same tunnel add a **Public Hostname**:
+`tiny.ravencloak.org` → Type **HTTP** → URL **`http://tinyraven:8000`**. That
+auto-creates the DNS record (delete any manual CNAME) and fixes the 404.
+
+### Option B — standalone cloudflared (config file)
+
+`deploy/cloudflared/config.example.yml` + `cloudflared tunnel create/route/run`
+on the host. Point `ingress[0].service` at `http://localhost:18000` (the
+published host port) or the container.
+
+### Option C — DockFlare (label-driven, host-wide)
+
+[DockFlare](https://github.com/ChrispyBacon-dev/DockFlare) auto-manages tunnel
+ingress + DNS from Docker labels — no dashboard step, and one tunnel for *every*
+service on the host. Deploy its upstream compose as a **separate** Dokploy stack
+(needs a CF API token + account/zone IDs), put it + this stack on a **shared
+external docker network**, then uncomment the `dockflare.*` labels on the
+`tinyraven` service in `docker-compose.prod.yml` (`dockflare.hostname=
+tiny.ravencloak.org`, `dockflare.service=http://tinyraven:8000`). DockFlare
+discovers the label and wires the route + DNS automatically. Best if you want all
+your host services (viewrr, caw, …) behind one label-driven tunnel.
 
 ## 6. Verify
 
