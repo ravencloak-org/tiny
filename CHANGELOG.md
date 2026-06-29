@@ -4,6 +4,22 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-06-29
+
+### Added
+- One-click production stack `deploy/docker-compose.prod.yml` (ClickHouse 26.3 +
+  Redis AOF + TinyRaven, health-gated, persistent volumes) for Dokploy Compose deploys.
+- Docker image now bakes the `examples/quickstart` project at `/project` and
+  defaults `TR_PROJECT_DIR=/project`, so a fresh deploy is queryable immediately.
+- Marketing site under `site/` (Next.js + shadcn + Bklit charts): hero, features,
+  one-env-var migration, illustrative price comparison, real benchmark
+  (~177k events/s, p95 71ms — measured: 50 clients, batched, 1 node, 2.65M events
+  persisted to ClickHouse).
+- Deploy guide `docs/deploy/dokploy.md` + Cloudflare Tunnel config for `tiny.ravencloak.org`.
+
+### Changed
+- Release image is single-arch `linux/amd64` (x86) — dropped multi-arch/QEMU.
+
 ## [0.1.0] — 2026-06-29
 
 First release: a working, self-hosted, Tinybird-API-compatible analytics backend
@@ -52,4 +68,5 @@ publishing + deployment). Single `tr` binary = server + CLI.
 - `/v0/sql` uses the `readonly=2` setting; a dedicated read-only CH user is the
   production upgrade.
 
+[0.1.1]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.0

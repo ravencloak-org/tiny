@@ -12,15 +12,30 @@ internal addresses for the env vars below.
 
 ## 2. Create the app in Dokploy
 
-Two options:
+### Option A — One-click Docker Compose (recommended: bundles CH + Redis)
 
-- **Docker image (recommended):** source = Docker, image
-  `ghcr.io/ravencloak-org/tiny:latest` (published by the Release workflow on each
-  `v*` tag, linux/amd64). Command: `serve`.
-- **Dockerfile build:** connect the GitHub repo `ravencloak-org/tiny`; Dokploy
-  builds the repo `Dockerfile`.
+Dokploy → Create → **Docker Compose**, connect the repo `ravencloak-org/tiny`,
+compose path `deploy/docker-compose.prod.yml`. It brings up ClickHouse + Redis +
+TinyRaven together (persistent volumes, health-gated). Set env in Dokploy:
 
-Container port: **8000**.
+```
+TR_ADMIN_TOKEN=<strong-secret>     # required
+TINYRAVEN_TAG=v0.1.1               # or latest
+TR_CLICKHOUSE_DB=tr_main           # optional
+TR_PORT=8000                       # optional
+```
+
+The image ships the `examples/quickstart` datasource + pipe at `/project`, so the
+app is queryable immediately; replace `/project` (volume or your own image) with
+your real `.datasource`/`.pipe` files.
+
+### Option B — Image only (you bring CH + Redis)
+
+Source = Docker image `ghcr.io/ravencloak-org/tiny:v0.1.1`, command `serve`, port
+**8000**, env from `.env.example` pointing at your own ClickHouse + Redis. (Or a
+Dockerfile build from the repo.)
+
+Container port: **8000**. The `ghcr.io/ravencloak-org/tiny` package is public.
 
 ## 3. Environment
 

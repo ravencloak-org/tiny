@@ -1,0 +1,55 @@
+# One-click production stack for Dokploy: ClickHouse + Redis + TinyRaven.
+# Dokploy → Create → Docker Compose → point at this file. It clones the repo,
+# so relative paths resolve. Set the env in Dokploy (or a .env next to this).
+#
+# Local test:  docker compose -f deploy/docker-compose.prod.yml up -d
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.3
+    environment:
+      CLICKHOUSE_DB: ${TR_CLICKHOUSE_DB:-tr_main}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  tinyraven:
+    image: ghcr.io/ravencloak-org/tiny:${TINYRAVEN_TAG:-latest}
+    command: ["serve"]
+    ports:
+      - "${TR_PORT:-8000}:8000"
+    environment:
+      TR_HTTP_ADDR: ":8000"
+      TR_CLICKHOUSE_HTTP: "http://clickhouse:8123"
+      TR_CLICKHOUSE_NATIVE: "clickhouse:9000"
+      TR_CLICKHOUSE_DB: "${TR_CLICKHOUSE_DB:-tr_main}"
+      TR_REDIS_ADDR: "redis:6379"
+      TR_PROJECT_DIR: "/project" # baked starter project; override with a volume
+      TR_ADMIN_TOKEN: "${TR_ADMIN_TOKEN:?set a strong admin token}"
+    depends_on:
+      clickhouse: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  clickhouse_data:
+  redis_data:
