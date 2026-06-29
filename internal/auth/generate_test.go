@@ -7,7 +7,7 @@ import (
 
 func TestGenerateValue(t *testing.T) {
 	seen := map[string]bool{}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		v, err := GenerateValue()
 		if err != nil {
 			t.Fatalf("GenerateValue: %v", err)
