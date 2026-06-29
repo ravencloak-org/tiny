@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	yaml "go.yaml.in/yaml/v3"
@@ -16,15 +17,16 @@ import (
 
 // Config is the resolved server + CLI configuration.
 type Config struct {
-	HTTPAddr     string // listen address, e.g. ":8000"
-	CHHTTPURL    string // ClickHouse HTTP, e.g. "http://localhost:8123"
-	CHNativeAddr string // ClickHouse native TCP, e.g. "localhost:9000"
-	CHDatabase   string // target database, e.g. "tr_main"
-	CHUser       string
-	CHPassword   string
-	RedisAddr    string // e.g. "localhost:6379"
-	ProjectDir   string // dir holding .datasource/.pipe files
-	AdminToken   string // bootstrap ADMIN token; empty disables bootstrap
+	HTTPAddr      string // listen address, e.g. ":8000"
+	CHHTTPURL     string // ClickHouse HTTP, e.g. "http://localhost:8123"
+	CHNativeAddr  string // ClickHouse native TCP, e.g. "localhost:9000"
+	CHDatabase    string // target database, e.g. "tr_main"
+	CHUser        string
+	CHPassword    string
+	RedisAddr     string // e.g. "localhost:6379"
+	ProjectDir    string // dir holding .datasource/.pipe files
+	AdminToken    string // bootstrap ADMIN token; empty disables bootstrap
+	PipeRateLimit int    // per-token req/s on /v0/pipes (ADR 0015); 0 disables
 
 	// Client-facing config, Tinybird-compatible (read from config.yml / env).
 	Host      string // API host the `tr` CLI talks to, e.g. "http://localhost:8000"
@@ -52,15 +54,16 @@ const (
 // usable Config for the server — missing config files are not an error.
 func Load() Config {
 	c := Config{
-		HTTPAddr:     env("TR_HTTP_ADDR", ":8000"),
-		CHHTTPURL:    env("TR_CLICKHOUSE_HTTP", "http://localhost:8123"),
-		CHNativeAddr: env("TR_CLICKHOUSE_NATIVE", "localhost:9000"),
-		CHDatabase:   env("TR_CLICKHOUSE_DB", "tr_main"),
-		CHUser:       env("TR_CLICKHOUSE_USER", "default"),
-		CHPassword:   env("TR_CLICKHOUSE_PASSWORD", ""),
-		RedisAddr:    env("TR_REDIS_ADDR", "localhost:6379"),
-		ProjectDir:   env("TR_PROJECT_DIR", "."),
-		AdminToken:   env("TR_ADMIN_TOKEN", ""),
+		HTTPAddr:      env("TR_HTTP_ADDR", ":8000"),
+		CHHTTPURL:     env("TR_CLICKHOUSE_HTTP", "http://localhost:8123"),
+		CHNativeAddr:  env("TR_CLICKHOUSE_NATIVE", "localhost:9000"),
+		CHDatabase:    env("TR_CLICKHOUSE_DB", "tr_main"),
+		CHUser:        env("TR_CLICKHOUSE_USER", "default"),
+		CHPassword:    env("TR_CLICKHOUSE_PASSWORD", ""),
+		RedisAddr:     env("TR_REDIS_ADDR", "localhost:6379"),
+		ProjectDir:    env("TR_PROJECT_DIR", "."),
+		AdminToken:    env("TR_ADMIN_TOKEN", ""),
+		PipeRateLimit: envInt("TR_PIPE_RATE_LIMIT", 100),
 
 		Host:      "http://localhost:8000",
 		Token:     "",
@@ -147,6 +150,16 @@ func expandHome(path string) string {
 func env(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return def
+}
+
+// envInt reads an integer env var, falling back to def on unset/invalid.
+func envInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
 	}
 	return def
 }

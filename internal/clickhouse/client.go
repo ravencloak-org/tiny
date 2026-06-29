@@ -59,7 +59,18 @@ func New(cfg Config) (*Client, error) {
 		db:       cfg.Database,
 		user:     cfg.User,
 		password: cfg.Password,
-		http:     &http.Client{Timeout: 30 * time.Second},
+		// Tuned transport: keep many idle keep-alive connections to ClickHouse so
+		// concurrent pipe queries reuse them instead of dialing per request (the
+		// default MaxIdleConnsPerHost=2 thrashes connections + adds latency/errors
+		// under load). This is what keeps query latency close to CH's own time.
+		http: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        512,
+				MaxIdleConnsPerHost: 512,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
 	}
 	if cfg.NativeAddr != "" {
 		conn, err := clickhouse.Open(&clickhouse.Options{

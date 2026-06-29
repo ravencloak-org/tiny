@@ -27,10 +27,9 @@ import (
 	"github.com/tinyraven/tinyraven/internal/sqlproxy"
 )
 
-// defaultPipeRPS is the per-token rate limit applied to pipe reads when a pipe
-// declares no RATE_LIMIT. ponytail: global default; per-pipe RATE_LIMIT + a
-// shared (httprate-redis) store are the upgrades (ADR 0015 / 0031).
-const defaultPipeRPS = 100
+// Pipe rate limit comes from config (TR_PIPE_RATE_LIMIT, default 100; 0 disables).
+// ponytail: global per-token default; per-pipe RATE_LIMIT + a shared
+// (httprate-redis) store are the upgrades (ADR 0015 / 0031).
 
 func newServeCmd() *cobra.Command {
 	return &cobra.Command{
@@ -105,7 +104,7 @@ func runServe(ctx context.Context, cfg config.Config) error {
 			SQLProxy:          sqlproxy.New(ch),
 			MetricsHandler:    mx.Handler(),
 			MetricsMiddleware: mx.Middleware,
-			RateLimit:         ratelimit.PerToken(defaultPipeRPS),
+			RateLimit:         ratelimit.PerToken(cfg.PipeRateLimit),
 			OpenAPI:           func() []byte { return openapi.Generate(pipeReg.List()) },
 			IngestObserver:    mx.IngestObserved,
 		}),
