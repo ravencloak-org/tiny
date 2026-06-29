@@ -10,16 +10,16 @@
 **Deliverable:** Working `tr local` dev environment — events in, query results out
 
 ### Must Ship
-- [ ] Go HTTP server (`net/http` + `chi` router)
-- [ ] `POST /v0/events` — JSON / NDJSON ingestion
-- [ ] `GET /v0/pipes/:name.json` — parameterized SQL query
-- [ ] `GET /health` (liveness) + `GET /health/ready` (readiness: Redis + ClickHouse) — see ADR 0024
-- [ ] Gatherer: in-memory ring buffer, flush on `max(10,000 events, 5s timeout)`
-- [ ] `.datasource` file parser → Redis schema registry (ADR 0001 — Redis-only metadata)
-- [ ] `.pipe` file parser → `{{Type(param, default)}}` SQL template injection
-- [ ] Bearer token auth middleware → Redis lookup
-- [ ] `tr local start` → Docker Compose (ClickHouse + TinyRaven + Redis)
-- [ ] Hot reload on `.datasource` / `.pipe` file change
+- [x] Go HTTP server (`net/http` + `chi` router)
+- [x] `POST /v0/events` — JSON / NDJSON ingestion
+- [x] `GET /v0/pipes/:name.json` — parameterized SQL query
+- [x] `GET /health` (liveness) + `GET /health/ready` (readiness: Redis + ClickHouse) — see ADR 0024
+- [x] Gatherer: in-memory buffer, flush on `max(10,000 events, 5s timeout)`
+- [x] `.datasource` file parser → Redis schema registry (ADR 0001 — Redis-only metadata)
+- [x] `.pipe` file parser → `{{Type(param, default)}}` SQL template injection
+- [x] Bearer token auth middleware → Redis lookup
+- [x] `tr local start` → Docker Compose (ClickHouse + TinyRaven + Redis)
+- [x] Hot reload on `.datasource` / `.pipe` file change (mtime poll; fsnotify upgrade later)
 
 ### Success Criteria
 ```bash
