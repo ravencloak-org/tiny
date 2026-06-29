@@ -163,3 +163,20 @@ type Ingester interface {
 type PipeRunner interface {
 	Run(ctx context.Context, name string, params url.Values) (body []byte, status int, err error)
 }
+
+// QueryStat is one pipe execution's observability record (ADR 0014). Fed through
+// the Gatherer into the tinybird.pipe_stats table, async + best-effort.
+type QueryStat struct {
+	Pipe       string
+	DurationMS float64
+	ReadRows   int64
+	ReadBytes  int64
+	StatusCode int
+	Error      string // empty on success
+}
+
+// StatsRecorder receives per-query stats. Implementations MUST be non-blocking
+// (drop on overflow) so observability never slows the query path (ADR 0014).
+type StatsRecorder interface {
+	Record(stat QueryStat)
+}
