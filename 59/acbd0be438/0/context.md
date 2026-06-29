@@ -167,3 +167,7 @@ let's go
 
 push it and start phase 2 in parallel
 
+### Prompt 38
+
+complete phase 1 + 2 and create release via git tag to my dokploy instance and create changelog md file
+

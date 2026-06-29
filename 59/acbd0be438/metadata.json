@@ -6,8 +6,11 @@
   "checkpoints_count": 1,
   "files_touched": [
     ".coderabbit.yaml",
+    ".env.example",
     ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
     ".gitignore",
+    "CHANGELOG.md",
     "CONTEXT.md",
     "Dockerfile",
     "HANDOFF.md",
@@ -19,6 +22,7 @@
     "cmd/tr/serve.go",
     "cmd/tr/serve_stubs.go",
     "codecov.yml",
+    "deploy/cloudflared/config.example.yml",
     "docker-compose.yml",
     "docs/adr/0003-pipe-templating-parameterized-queries.md",
     "docs/adr/0009-clickhouse-26.3-lts-feature-baseline.md",
@@ -34,6 +38,7 @@
     "docs/adr/0027-resource-token-materialization-on-deploy.md",
     "docs/adr/0029-api-versioning-v0-frozen-tr-namespace-native.md",
     "docs/adr/0031-single-node-scope-no-tr-horizontal-ha.md",
+    "docs/deploy/dokploy.md",
     "examples/quickstart/events.datasource",
     "examples/quickstart/user_metrics.pipe",
     "internal/api/events.go",
@@ -47,7 +52,8 @@
     "internal/clickhouse/ddl.go",
     "internal/config/config.go",
     "internal/gatherer/gatherer.go",
-    "internal/model/model.go"
+    "internal/model/model.go",
+    "site/lib/data.ts"
   ],
   "sessions": [
     {
@@ -59,10 +65,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 10646,
-    "cache_creation_tokens": 105459,
-    "cache_read_tokens": 15087931,
-    "output_tokens": 54451,
-    "api_call_count": 40
+    "input_tokens": 3468,
+    "cache_creation_tokens": 466338,
+    "cache_read_tokens": 12671407,
+    "output_tokens": 42606,
+    "api_call_count": 30
   }
 }
