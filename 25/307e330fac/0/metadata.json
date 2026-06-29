@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "25307e330fac",
+  "session_id": "8800a864-e1cb-4d13-9744-9d16ef2a83c7",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-29T05:34:32.456058Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "PROMPT.md",
+    "docs/adr/0025-pipe-result-governance-cors-query-token.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "bb29438d-4575-40e0-98d6-d5a19a5a8896",
+  "checkpoint_transcript_start": 751,
+  "transcript_lines_at_start": 751,
+  "token_usage": {
+    "input_tokens": 487,
+    "cache_creation_tokens": 10061,
+    "cache_read_tokens": 1909022,
+    "output_tokens": 5021,
+    "api_call_count": 9
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-29T05:34:32.374592Z",
+    "agent_lines": 0,
+    "human_added": 10,
+    "human_modified": 21,
+    "human_removed": 0,
+    "total_committed": 30,
+    "agent_percentage": 0
+  }
+}

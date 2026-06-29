@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "25307e330fac",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "PROMPT.md",
+    "docs/adr/0025-pipe-result-governance-cors-query-token.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/25/307e330fac/0/metadata.json",
+      "transcript": "/25/307e330fac/0/full.jsonl",
+      "context": "/25/307e330fac/0/context.md",
+      "content_hash": "/25/307e330fac/0/content_hash.txt",
+      "prompt": "/25/307e330fac/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 487,
+    "cache_creation_tokens": 10061,
+    "cache_read_tokens": 1909022,
+    "output_tokens": 5021,
+    "api_call_count": 9
+  }
+}
