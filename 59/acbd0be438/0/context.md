@@ -171,3 +171,7 @@ push it and start phase 2 in parallel
 
 complete phase 1 + 2 and create release via git tag to my dokploy instance and create changelog md file
 
+### Prompt 39
+
+yes one click docker compose
+
