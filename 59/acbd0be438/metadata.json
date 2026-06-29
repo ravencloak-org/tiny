@@ -5,8 +5,7 @@
   "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
-    "deploy/docker-compose.prod.yml",
-    "docs/deploy/dokploy.md"
+    "deploy/docker-compose.prod.yml"
   ],
   "sessions": [
     {
@@ -18,10 +17,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 763,
-    "cache_creation_tokens": 26958,
-    "cache_read_tokens": 5498868,
-    "output_tokens": 21350,
-    "api_call_count": 11
+    "input_tokens": 533,
+    "cache_creation_tokens": 4039,
+    "cache_read_tokens": 2575248,
+    "output_tokens": 5242,
+    "api_call_count": 5
   }
 }

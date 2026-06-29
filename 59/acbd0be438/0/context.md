@@ -191,3 +191,11 @@ yes
 
 yes add cloudflared to the compose, but i also added in dashboard a cname but getting a 404
 
+### Prompt 43
+
+quick cloudflared now
+
+### Prompt 44
+
+in dokploy what should i add as port? remove additional dockflare issues, the vps runs daemon for cloudflare tunnel , creaet one for tiny as well similarly and i've added cname, just tell me port to set in dokploy
+
