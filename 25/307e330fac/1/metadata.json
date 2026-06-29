@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "25307e330fac",
+  "session_id": "5e379906-7378-4207-8b64-361d6a3dd262",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-29T05:34:51.127995Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "PROMPT.md",
+    "README.md",
+    "docs/adr/0013-clickhouse-access-split-native-insert-http-query.md",
+    "docs/adr/0025-pipe-response-format-and-limits.md",
+    "docs/adr/0025-pipe-result-governance-cors-query-token.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "22662cd4-d69a-4f4e-b8ed-3806000d4dd2",
+  "checkpoint_transcript_start": 459,
+  "transcript_lines_at_start": 459,
+  "token_usage": {
+    "input_tokens": 4284,
+    "cache_creation_tokens": 10030,
+    "cache_read_tokens": 2472262,
+    "output_tokens": 6358,
+    "api_call_count": 10
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-29T05:34:51.074592Z",
+    "agent_lines": 0,
+    "human_added": 8,
+    "human_modified": 23,
+    "human_removed": 0,
+    "total_committed": 28,
+    "agent_percentage": 0
+  }
+}

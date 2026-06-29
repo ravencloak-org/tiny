@@ -3,9 +3,12 @@
   "checkpoint_id": "25307e330fac",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     "PROMPT.md",
+    "README.md",
+    "docs/adr/0013-clickhouse-access-split-native-insert-http-query.md",
+    "docs/adr/0025-pipe-response-format-and-limits.md",
     "docs/adr/0025-pipe-result-governance-cors-query-token.md"
   ],
   "sessions": [
@@ -15,13 +18,20 @@
       "context": "/25/307e330fac/0/context.md",
       "content_hash": "/25/307e330fac/0/content_hash.txt",
       "prompt": "/25/307e330fac/0/prompt.txt"
+    },
+    {
+      "metadata": "/25/307e330fac/1/metadata.json",
+      "transcript": "/25/307e330fac/1/full.jsonl",
+      "context": "/25/307e330fac/1/context.md",
+      "content_hash": "/25/307e330fac/1/content_hash.txt",
+      "prompt": "/25/307e330fac/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 487,
-    "cache_creation_tokens": 10061,
-    "cache_read_tokens": 1909022,
-    "output_tokens": 5021,
-    "api_call_count": 9
+    "input_tokens": 4771,
+    "cache_creation_tokens": 20091,
+    "cache_read_tokens": 4381284,
+    "output_tokens": 11379,
+    "api_call_count": 19
   }
 }
