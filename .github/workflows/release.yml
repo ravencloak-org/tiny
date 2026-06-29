@@ -29,7 +29,9 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          # Single-arch x86 for prod/cloud deploy targets (no multi-arch/QEMU).
+          # Local dev on Apple Silicon builds arm64 natively via `docker compose build`.
+          platforms: linux/amd64
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
