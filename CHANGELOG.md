@@ -4,6 +4,22 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-06-29
+
+Phases 3–5 + scoped auth + a query-path perf fix.
+
+### Added
+- **Branching** (Phase 3): `tr_{branch}` ClickHouse DB per git branch; `tr deploy --branch` / `tr local start --branch`.
+- **Materialized views** + **breaking migrations** (shadow → backfill → `EXCHANGE TABLES`, `--allow-breaking`).
+- **Config**: `~/.tinyraven/config.yml` (Tinybird-compatible) + `TINYBIRD_HOST/TOKEN/WORKSPACE` env.
+- **Connectors** (Phase 5): Kafka/S3/PostgreSQL as ClickHouse-native engines in `.datasource` (ADR 0019) + templates; BI-tool docs; load + query benchmarks (`scripts/loadtest`, `scripts/querybench`).
+- **Distribution** (Phase 4): GoReleaser (binaries/deb/rpm), Helm chart, Heroku/Railway/DO/AWS-CFN manifests, deploy docs.
+- **Scoped tokens**: `tr token create/ls/rm`; per-scope enforcement — `READ:<pipe>`, `APPEND:<ds>`, `ADMIN`, wildcards (ADR 0005). Frontends can hold a read-only pipe token.
+- `TR_PIPE_RATE_LIMIT` (configurable per-token rate limit; 0 disables).
+
+### Changed / Fixed
+- **perf:** tuned ClickHouse HTTP transport (`MaxIdleConnsPerHost: 512`) — default (2) thrashed connections under load (p50 92ms + errors); pooled = ~19ms p50, ~0 errors (4–5×). Query latency now CH-bound: **single-flight p50 ~1.8ms** (CH ~0.35ms).
+
 ## [0.1.2] — 2026-06-29
 
 ### Added
@@ -78,6 +94,7 @@ publishing + deployment). Single `tr` binary = server + CLI.
 - `/v0/sql` uses the `readonly=2` setting; a dedicated read-only CH user is the
   production upgrade.
 
+[0.2.0]: https://github.com/ravencloak-org/tiny/releases/tag/v0.2.0
 [0.1.2]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.0
