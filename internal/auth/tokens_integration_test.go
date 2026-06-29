@@ -10,6 +10,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -31,16 +32,20 @@ func testRedis(t *testing.T) *redis.Client {
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		t.Skipf("redis unreachable at %s: %v", addr, err)
 	}
+	// Registered first so it runs LAST (LIFO) — after any key-cleanup the test
+	// adds, so those Dels still see an open client.
+	t.Cleanup(func() { rdb.Close() })
 	return rdb
 }
 
 func TestPutValidateBootstrap(t *testing.T) {
 	rdb := testRedis(t)
-	defer rdb.Close()
 	s := NewStore(rdb)
 	ctx := context.Background()
 
-	const val = "tr_integration_test_token"
+	// Unique per run so a leftover from an interrupted run (or a shared,
+	// persistent Redis) never violates the "unknown token" precondition.
+	val := fmt.Sprintf("tr_it_%d_%d", os.Getpid(), time.Now().UnixNano())
 	t.Cleanup(func() { rdb.Del(ctx, key(val)) })
 
 	// Unknown token -> ok=false, no error.
