@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "88f286c0e8b5",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/adr/0028-cicd-template-pr-ephemeral-branch.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/88/f286c0e8b5/0/metadata.json",
+      "transcript": "/88/f286c0e8b5/0/full.jsonl",
+      "context": "/88/f286c0e8b5/0/context.md",
+      "content_hash": "/88/f286c0e8b5/0/content_hash.txt",
+      "prompt": "/88/f286c0e8b5/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 515,
+    "cache_creation_tokens": 7730,
+    "cache_read_tokens": 1433531,
+    "output_tokens": 7120,
+    "api_call_count": 5
+  }
+}
