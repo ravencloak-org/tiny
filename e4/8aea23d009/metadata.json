@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "e48aea23d009",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "PROMPT.md",
+    "docs/adr/0017-openapi-runtime-from-registry.md",
+    "docs/adr/0030-resource-token-materialization-on-deploy.md",
+    "docs/adr/0031-single-node-scope-no-tr-horizontal-ha.md",
+    "docs/adr/0032-drop-kin-openapi-and-viper.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e4/8aea23d009/0/metadata.json",
+      "transcript": "/e4/8aea23d009/0/full.jsonl",
+      "context": "/e4/8aea23d009/0/context.md",
+      "content_hash": "/e4/8aea23d009/0/content_hash.txt",
+      "prompt": "/e4/8aea23d009/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1230,
+    "cache_creation_tokens": 36059,
+    "cache_read_tokens": 7419914,
+    "output_tokens": 22645,
+    "api_call_count": 24
+  }
+}
