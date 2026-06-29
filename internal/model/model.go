@@ -8,8 +8,13 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/url"
 )
+
+// ErrUnknownDatasource is returned by Ingester when events target a datasource
+// that isn't registered. The API maps it to 404 (ADR 0008 — no schema-on-write).
+var ErrUnknownDatasource = errors.New("unknown datasource")
 
 // ---- Data types (parsed from project files) ----
 

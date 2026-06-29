@@ -5,8 +5,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+
+	"github.com/tinyraven/tinyraven/internal/model"
 )
 
 // handleEvents ingests JSON / NDJSON event rows for a datasource (ADRs 0004,
@@ -40,6 +43,10 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 	ok, quarantined, err := s.deps.Ingester.Ingest(r.Context(), name, rows)
 	if err != nil {
+		if errors.Is(err, model.ErrUnknownDatasource) {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
