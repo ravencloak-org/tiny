@@ -115,13 +115,44 @@ func Parse(name, raw string) (*model.Datasource, error) {
 	return ds, nil
 }
 
-// validate enforces ADR 0027 structural + referential rules.
+// validate enforces ADR 0027 structural + referential rules, branching by engine
+// family (ADR 0019). SCHEMA is required for every engine. MergeTree datasources
+// also get ENGINE_SORTING_KEY/PARTITION_KEY/TTL column-reference checks; connector
+// engines (Kafka/S3/PostgreSQL) have no ORDER BY, so those don't apply — instead
+// their required ENGINE_* options must be present.
 func validate(ds *model.Datasource) error {
 	var problems []string
 	if len(ds.Schema) == 0 {
 		problems = append(problems, "SCHEMA is required and must define at least one column")
 	}
 
+	switch engineFamily(ds.Engine) {
+	case familyKafka:
+		problems = append(problems, requireOpts(ds, "Kafka",
+			optReq{"broker list", []string{"ENGINE_KAFKA_BROKER_LIST"}},
+			optReq{"topic list", []string{"ENGINE_KAFKA_TOPIC_LIST"}})...)
+	case familyS3:
+		problems = append(problems, requireOpts(ds, "S3",
+			optReq{"path", []string{"ENGINE_S3_PATH", "ENGINE_S3_URL"}})...)
+	case familyPostgreSQL:
+		problems = append(problems, requireOpts(ds, "PostgreSQL",
+			optReq{"host", []string{"ENGINE_POSTGRES_HOST", "ENGINE_PG_HOST"}},
+			optReq{"database", []string{"ENGINE_POSTGRES_DATABASE", "ENGINE_PG_DATABASE", "ENGINE_POSTGRES_DB", "ENGINE_PG_DB"}},
+			optReq{"table", []string{"ENGINE_POSTGRES_TABLE", "ENGINE_PG_TABLE"}})...)
+	default:
+		problems = append(problems, columnRefProblems(ds)...)
+	}
+
+	if len(problems) > 0 {
+		return fmt.Errorf("invalid datasource %q: %s", ds.Name, strings.Join(problems, "; "))
+	}
+	return nil
+}
+
+// columnRefProblems checks that each ENGINE_SORTING_KEY/PARTITION_KEY/TTL
+// expression only references defined SCHEMA columns (ADR 0027, MergeTree only).
+func columnRefProblems(ds *model.Datasource) []string {
+	var problems []string
 	schema := make(map[string]bool, len(ds.Schema))
 	for _, c := range ds.Schema {
 		schema[c.Name] = true
@@ -137,11 +168,67 @@ func validate(ds *model.Datasource) error {
 			}
 		}
 	}
-	if len(problems) > 0 {
-		return fmt.Errorf("invalid datasource %q: %s", ds.Name, strings.Join(problems, "; "))
-	}
-	return nil
+	return problems
 }
+
+// optReq is one required connector option: a human label plus the accepted
+// ENGINE_* keys (any one satisfies it).
+type optReq struct {
+	label string
+	keys  []string
+}
+
+// requireOpts returns a problem string for each connector option group that has
+// no non-empty value, naming the engine, the option, and its accepted keys.
+func requireOpts(ds *model.Datasource, engine string, reqs ...optReq) []string {
+	var problems []string
+	for _, r := range reqs {
+		if optValue(ds.EngineOpts, r.keys...) == "" {
+			problems = append(problems, fmt.Sprintf("%s engine requires %s (%s)",
+				engine, r.label, strings.Join(r.keys, " or ")))
+		}
+	}
+	return problems
+}
+
+// optValue returns the first non-empty (trimmed) value among keys, or "".
+func optValue(opts map[string]string, keys ...string) string {
+	for _, k := range keys {
+		if v := strings.TrimSpace(opts[k]); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// engineFamily classifies the ENGINE value exactly as internal/clickhouse does,
+// so validation can branch MergeTree (column-ref checks) vs connector engines
+// (required-option checks; ADR 0019). Deliberately duplicated rather than
+// imported: the parser must not depend on the ClickHouse client package.
+func engineFamily(engine string) string {
+	head := strings.ToLower(strings.TrimSpace(engine))
+	if i := strings.IndexByte(head, '('); i >= 0 {
+		head = strings.TrimSpace(head[:i])
+	}
+	switch head {
+	case "kafka":
+		return familyKafka
+	case "s3":
+		return familyS3
+	case "postgresql", "postgres":
+		return familyPostgreSQL
+	default:
+		return familyMergeTree
+	}
+}
+
+// Engine family tags (mirror internal/clickhouse).
+const (
+	familyMergeTree  = "mergetree"
+	familyKafka      = "kafka"
+	familyS3         = "s3"
+	familyPostgreSQL = "postgresql"
+)
 
 // columnIdents extracts the bare identifiers in an ENGINE_* expression that
 // should refer to SCHEMA columns: function names (identifier followed by "(")

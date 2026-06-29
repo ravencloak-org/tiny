@@ -1,0 +1,21 @@
+# kafka_events — ClickHouse-native Kafka consumer (ADR 0019). `tr deploy` creates
+# this Kafka engine table; ClickHouse runs the consumer group and pulls messages.
+# TinyRaven builds no Kafka runtime of its own.
+#
+# A Kafka engine table is NOT queryable storage — reading it consumes the stream.
+# Pair it with a materialized view into a MergeTree table (events_mt) via
+# kafka_to_events.pipe. The SCHEMA must match the fields in each Kafka message
+# for the chosen ENGINE_KAFKA_FORMAT.
+SCHEMA >
+    event_id String,
+    user_id String,
+    event String,
+    timestamp DateTime
+
+ENGINE "Kafka"
+ENGINE_KAFKA_BROKER_LIST "localhost:9092"
+ENGINE_KAFKA_TOPIC_LIST "events"
+ENGINE_KAFKA_GROUP_NAME "tinyraven-events"
+ENGINE_KAFKA_FORMAT "JSONEachRow"
+# Any other ENGINE_KAFKA_* option maps straight to the matching kafka_* setting,
+# e.g. ENGINE_KAFKA_NUM_CONSUMERS "2" -> kafka_num_consumers = 2.

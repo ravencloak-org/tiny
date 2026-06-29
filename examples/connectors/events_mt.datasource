@@ -1,0 +1,14 @@
+# events_mt — MergeTree target table for the Kafka consumer's materialized view.
+# A Kafka engine table (kafka_events) is a stream, not storage: each row can be
+# read exactly once. The materialized view in kafka_to_events.pipe drains that
+# stream and writes durable, queryable rows here. Query THIS table, not the
+# Kafka one.
+SCHEMA >
+    event_id String,
+    user_id String,
+    event String,
+    timestamp DateTime
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "(user_id, timestamp)"
+ENGINE_PARTITION_KEY "toYYYYMM(timestamp)"

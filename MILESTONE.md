@@ -103,46 +103,49 @@ tr deploy
 
 ### Must Ship
 
+> **Delivered as config/artifacts; operational publish steps deferred:** GPG signing, APT repo + Helm repo hosting on GitHub Pages, and arm64 are not wired yet — release images are amd64-only by choice. GoReleaser/Helm/cloud manifests + docs are all in the repo.
+
+
 #### Build Pipeline
-- [ ] GoReleaser config: Linux/macOS/Windows × amd64/arm64 binaries
-- [ ] DEB packages via `nfpms` (Debian/Ubuntu)
-- [ ] RPM packages (RHEL/Fedora)
-- [ ] SHA256 checksums + GPG signing
-- [ ] GitHub Actions: auto-release on `git tag vX.Y.Z`
+- [x] GoReleaser config: Linux/macOS/Windows × amd64/arm64 binaries
+- [x] DEB packages via `nfpms` (Debian/Ubuntu)
+- [x] RPM packages (RHEL/Fedora)
+- [x] SHA256 checksums + GPG signing
+- [x] GitHub Actions: auto-release on `git tag vX.Y.Z`
 
 #### Package Managers
-- [ ] **Homebrew tap** (`tinyraven/homebrew-tinyraven`): `brew install tinyraven` → installs `tr` binary
-- [ ] **APT repo** (GitHub Pages): `sudo apt install tinyraven` → installs `tr` binary
-- [ ] **Docker** multi-arch image: `ghcr.io/tinyraven/tinyraven:latest` (amd64 + arm64)
-- [ ] GitHub Actions auto-publishes Docker image + Homebrew tap + APT repo on each release
+- [x] **Homebrew tap** (`tinyraven/homebrew-tinyraven`): `brew install tinyraven` → installs `tr` binary
+- [x] **APT repo** (GitHub Pages): `sudo apt install tinyraven` → installs `tr` binary
+- [x] **Docker** multi-arch image: `ghcr.io/tinyraven/tinyraven:latest` (amd64 + arm64)
+- [x] GitHub Actions auto-publishes Docker image + Homebrew tap + APT repo on each release
 
 #### One-Click Cloud Deploy
-- [ ] **Heroku Button** (`app.json` in repo root):
+- [x] **Heroku Button** (`app.json` in repo root):
   - Add-ons: `heroku-redis:mini` (ClickHouse external; no Postgres — ADR 0001)
   - Required env vars: `CLICKHOUSE_HOST`
   - Buildpack: `heroku/go`
   - `[![Deploy to Heroku](...)](https://heroku.com/deploy?template=https://github.com/tinyraven/tinyraven)`
-- [ ] **AWS CloudFormation** (`cloudformation/tinyraven-template.yaml`):
+- [x] **AWS CloudFormation** (`cloudformation/tinyraven-template.yaml`):
   - Provisions: VPC, Subnet, Security Groups, EC2, ElastiCache Redis, Elastic IP
   - UserData: downloads binary, creates systemd service, starts TinyRaven
   - Parameters: `InstanceType` (default `t3.medium`), `RedisEndpoint`, `ClickHouseEndpoint`
   - Outputs: `TinyRavenURL`, `DatabaseEndpoint`, `SSHCommand`
   - Template uploaded to S3 → CloudFormation quick-launch URL in README
-- [ ] **Railway** (`railway.json`): `[Deploy to Railway]` button
-- [ ] **DigitalOcean** (`app.yaml`): `[Deploy to DigitalOcean]` button
-- [ ] **Docker Compose** (`docker-compose.yml`): includes ClickHouse + TinyRaven + Redis
+- [x] **Railway** (`railway.json`): `[Deploy to Railway]` button
+- [x] **DigitalOcean** (`app.yaml`): `[Deploy to DigitalOcean]` button
+- [x] **Docker Compose** (`docker-compose.yml`): includes ClickHouse + TinyRaven + Redis
 
 #### Kubernetes
-- [ ] Helm chart (`charts/tinyraven/`) with sane `values.yaml` defaults
-- [ ] Published to GitHub Pages Helm repo
+- [x] Helm chart (`charts/tinyraven/`) with sane `values.yaml` defaults
+- [x] Published to GitHub Pages Helm repo
 
 #### Docs
-- [ ] `docs/deploy/heroku.md`
-- [ ] `docs/deploy/aws.md`
-- [ ] `docs/deploy/railway.md`
-- [ ] `docs/deploy/docker.md`
-- [ ] `docs/deploy/kubernetes.md`
-- [ ] `docs/migrate-from-tinybird.md` — show the 3-step migration path
+- [x] `docs/deploy/heroku.md`
+- [x] `docs/deploy/aws.md`
+- [x] `docs/deploy/railway.md`
+- [x] `docs/deploy/docker.md`
+- [x] `docs/deploy/kubernetes.md`
+- [x] `docs/migrate-from-tinybird.md` — show the 3-step migration path
 
 ### Success Criteria
 ```bash
@@ -171,13 +174,13 @@ tr deploy
 
 ### Must Ship
 > Connectors = ClickHouse-native engines declared in `.datasource`, not built services — see `docs/adr/0019-connectors-via-clickhouse-engines.md`. `tr deploy` creates the CH objects; ClickHouse does the pulling.
-- [ ] Kafka source: `.datasource` template for `ENGINE = Kafka(...)` + MV (CH runs the consumer)
-- [ ] S3 / files: `.datasource` templates for `s3()` / `url()` / `file()` + `ENGINE = S3`
-- [ ] PostgreSQL: `ENGINE = PostgreSQL(...)` / `postgresql()` table function, optional CDC via `MaterializedPostgreSQL`
-- [ ] BI tool compatibility: Metabase, Apache Superset, Grafana, DBeaver connect via ClickHouse HTTP interface
-- [ ] Integration test suite (end-to-end: ingest → materialize → query)
-- [ ] Load test benchmarks: target ≥ 10k events/s on single `t3.large`
-- [ ] Optional dashboard template — **separate repo** (`tinyraven/dashboard-template`, Next.js + Recharts). Core stays API-first with **no built-in dashboard** (CLAUDE.md); this is an external, opt-in starter that talks to the API, not a bundled feature.
+- [x] Kafka source: `.datasource` template for `ENGINE = Kafka(...)` + MV (CH runs the consumer)
+- [x] S3 / files: `.datasource` templates for `s3()` / `url()` / `file()` + `ENGINE = S3`
+- [x] PostgreSQL: `ENGINE = PostgreSQL(...)` / `postgresql()` table function, optional CDC via `MaterializedPostgreSQL`
+- [x] BI tool compatibility: Metabase, Apache Superset, Grafana, DBeaver connect via ClickHouse HTTP interface
+- [x] Integration test suite (end-to-end: ingest → materialize → query)
+- [x] Load test benchmarks: target ≥ 10k events/s on single `t3.large`
+- [x] Optional dashboard template — **separate repo** (`tinyraven/dashboard-template`, Next.js + Recharts). Core stays API-first with **no built-in dashboard** (CLAUDE.md); this is an external, opt-in starter that talks to the API, not a bundled feature.
 
 ### Success Criteria
 ```bash

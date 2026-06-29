@@ -1,0 +1,10 @@
+# kafka_to_events — the materialized view that drains the Kafka engine table
+# (kafka_events) into the MergeTree target (events_mt). This is the standard
+# ClickHouse Kafka ingestion pattern: consumer table + MV. `tr deploy` issues
+# CREATE MATERIALIZED VIEW kafka_to_events TO events_mt AS <SQL>, and ClickHouse
+# moves every consumed batch into durable storage.
+MATERIALIZATION kafka_to_events
+TARGET_TABLE events_mt
+SQL >
+    SELECT event_id, user_id, event, timestamp
+    FROM kafka_events

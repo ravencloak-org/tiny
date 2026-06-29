@@ -1,0 +1,22 @@
+# postgres_users — query a live PostgreSQL table through ClickHouse (ADR 0019).
+# `tr deploy` creates the PostgreSQL engine table; ClickHouse reads rows from
+# Postgres on demand at query time (no copy, no sync). Joins against MergeTree
+# tables work transparently.
+#
+# Port defaults to 5432 if ENGINE_POSTGRES_PORT is omitted. For change-data-capture
+# (a continuously replicated copy) use ENGINE "MaterializedPostgreSQL" instead —
+# advanced, see README.md.
+SCHEMA >
+    id Int64,
+    email String,
+    created_at DateTime
+
+ENGINE "PostgreSQL"
+ENGINE_POSTGRES_HOST "localhost"
+ENGINE_POSTGRES_PORT "5432"
+ENGINE_POSTGRES_DATABASE "app"
+ENGINE_POSTGRES_TABLE "users"
+ENGINE_POSTGRES_USER "readonly"
+ENGINE_POSTGRES_PASSWORD ""
+# Keep real credentials out of git: leave ENGINE_POSTGRES_PASSWORD empty here and
+# supply it via a ClickHouse named collection, or use a read-only Postgres role.

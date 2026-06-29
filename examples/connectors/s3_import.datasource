@@ -1,0 +1,20 @@
+# s3_import — read objects straight from S3 as a queryable table (ADR 0019).
+# `tr deploy` creates the S3 engine table; ClickHouse fetches objects on demand
+# when you query it. Good for backfills and external datasets.
+#
+# For a one-off load into a MergeTree table instead of a live external table, run
+# INSERT INTO events_mt SELECT * FROM s3('<url>', '<format>') from any SQL client.
+SCHEMA >
+    event_id String,
+    user_id String,
+    event String,
+    timestamp DateTime
+
+ENGINE "S3"
+ENGINE_S3_PATH "https://my-bucket.s3.amazonaws.com/events/*.json.gz"
+ENGINE_S3_FORMAT "JSONEachRow"
+ENGINE_S3_COMPRESSION "gzip"
+# Credentials: prefer an IAM role on the node or a ClickHouse named collection
+# (configured server-side, kept out of git). For static keys you may add
+# ENGINE_S3_AWS_ACCESS_KEY_ID / ENGINE_S3_AWS_SECRET_ACCESS_KEY here — but do not
+# commit secrets; see README.md.
