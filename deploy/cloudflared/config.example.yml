@@ -1,0 +1,19 @@
+# Cloudflare Tunnel config for TinyRaven → tiny.ravencloak.org
+# Copy to config.yml, fill TUNNEL_ID, and point `service` at where tr listens.
+#
+# Setup (one-time, on a host with cloudflared + `cloudflared login` done):
+#   cloudflared tunnel create tinyraven
+#   cloudflared tunnel route dns tinyraven tiny.ravencloak.org
+#   # note the Tunnel UUID + credentials json path it prints, fill below
+#   cloudflared tunnel --config config.yml run tinyraven
+
+tunnel: TUNNEL_ID                       # UUID from `cloudflared tunnel create`
+credentials-file: /etc/cloudflared/TUNNEL_ID.json
+
+ingress:
+  # If tr runs as a Dokploy app behind its Traefik proxy, point at Traefik and
+  # let the Host header route it; if tr is a plain container, point straight at it.
+  - hostname: tiny.ravencloak.org
+    service: http://tinyraven:8000       # Dokploy service name / container:port
+  # everything else 404s
+  - service: http_status:404
