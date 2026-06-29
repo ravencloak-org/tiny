@@ -25,7 +25,7 @@ The model is **ScyllaDB → Cassandra**: identical API surface, leaner internals
 - **Backend + CLI:** one Go binary (`tr`), `net/http` + `chi`
 - **Database:** OSS ClickHouse (Apache 2.0), target **26.3 LTS**
 - **Metadata + cache:** Redis (AOF-persisted; system of record for metadata)
-- **License:** Apache 2.0 — no managed tier, no paywall
+- **License:** Apache 2.0 — free and feature-complete forever, no paywall, no gated "enterprise" features ([ADR 0021](docs/adr/0021-monetization-sustainability-only.md))
 
 ## Drop-in compatibility
 
