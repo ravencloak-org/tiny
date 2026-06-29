@@ -15,3 +15,10 @@ In dev (`tr local` / `tr dev`), a file watcher reloads project files without a r
 - Reuses the deploy migration code path for `.datasource` reload — one implementation of safe/breaking logic, not two.
 - `fsnotify` added to Locked Dependencies. If we ever want zero new deps, mtime polling @~1s is the drop-in fallback.
 - Debounce is mandatory, not optional: editors fire several fsnotify events per save, and un-debounced reloads would thrash the registry.
+
+## Amendment — dev `.datasource` auto-applies additive only; COW swap guarantee
+
+Resolving the original ambiguity ("auto-invoke" vs "print run `tr deploy`"):
+
+- **Dev `.datasource` change auto-applies *additive* migrations silently** (new column, new datasource) via the safe path (ADR 0006) — no command needed, keeping the dev loop fast. A **breaking** change (drop/retype a column, or a file delete implying a drop) is **refused** with a console message telling the developer to run `tr deploy`; the watcher never runs a destructive migration on a file save, even in dev. This is exactly ADR 0006's safe/breaking split reused at the watcher, matching `tb dev`'s live-apply-to-dev model.
+- **Registry swap is copy-on-write:** both `.pipe` reload and an additive `.datasource` reload publish a new registry via an `atomic.Pointer` swap. An in-flight request completes against the snapshot it began with; new requests pick up the new registry. The read path takes no lock — handlers load the pointer once per request.
