@@ -20,10 +20,12 @@ TinyRaven together (persistent volumes, health-gated). Set env in Dokploy:
 
 ```
 TR_ADMIN_TOKEN=<strong-secret>     # required
-TINYRAVEN_TAG=v0.1.1               # or latest
 TR_CLICKHOUSE_DB=tr_main           # optional
 TR_PORT=18000                      # optional host port (default 18000; avoid 80/8000/8080)
 ```
+
+The `tinyraven`/`site` services track `:latest` with `pull_policy: always` — do
+**not** pin a version env. Updates are automatic: see §4.
 
 The image ships the `examples/quickstart` datasource + pipe at `/project`, so the
 app is queryable immediately; replace `/project` (volume or your own image) with
@@ -55,16 +57,25 @@ TR_ADMIN_TOKEN=<strong-secret>   # bootstrap admin token — keep secret
 
 Health checks: liveness `GET /health`, readiness `GET /health/ready`.
 
-## 4. Auto-deploy on release (tag → Dokploy)
+## 4. Auto-deploy on release (tag → prod, fully automatic)
 
-The `.github/workflows/release.yml` job `deploy-dokploy` POSTs to your app's
-Dokploy **Deploy Webhook** on every `v*` tag.
+Once wired, **pushing a `v*` tag updates prod with no manual step** — no version
+env to bump, no SSH:
 
-1. In Dokploy: app → **Deployments → Webhook**, copy the deploy webhook URL.
-2. In GitHub: repo → Settings → Secrets and variables → Actions → add secret
+1. `git tag vX.Y.Z && git push --tags`
+2. `.github/workflows/release.yml` builds + pushes `ghcr.io/ravencloak-org/{tiny,tiny-site}:latest`.
+3. Its `deploy-dokploy` job POSTs your Dokploy **Deploy Webhook**.
+4. Dokploy redeploys the compose; `pull_policy: always` on `tinyraven`/`site`
+   pulls the freshly-built `:latest` → the new version goes live.
+
+**One-time setup:**
+1. Dokploy: app → **Deployments → Webhook**, copy the deploy webhook URL.
+2. GitHub: repo → Settings → Secrets and variables → Actions → add secret
    **`DOKPLOY_DEPLOY_WEBHOOK`** = that URL.
 
-Without the secret the step no-ops (CI stays green).
+Without the secret the deploy step no-ops (CI stays green) and you redeploy from
+the Dokploy UI button instead. Do **not** set a `TINYRAVEN_TAG` env — prod tracks
+`:latest` by design so the tag→deploy loop needs no version bumping.
 
 ## 5. Expose at tiny.ravencloak.org (Cloudflare Tunnel)
 
