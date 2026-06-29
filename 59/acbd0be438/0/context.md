@@ -276,3 +276,31 @@ Added in repository secrets
 
 No let’s proceed to what else is pending
 
+### Prompt 62
+
+Added
+
+### Prompt 63
+
+What’s pending
+
+### Prompt 64
+
+Go
+
+### Prompt 65
+
+Base directory for this skill: /Users/jobinlawrance/.claude/plugins/cache/caveman/caveman/655b7d9c5431/skills/caveman
+
+Respond terse like smart caveman. All technical substance stay. Only fluff die.
+
+## Persistence
+
+ACTIVE EVERY RESPONSE. No revert after many turns. No filler drift. Still active if unsure. Off only: "stop caveman" / "normal mode".
+
+Default: **full**. Switch: `/caveman lite|full|ultra`.
+
+## Rules
+
+Drop: articles (a/an/the), filler (just/really/basically/actually/simply), pleasant...
+

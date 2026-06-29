@@ -2,7 +2,7 @@
   "cli_version": "0.4.2",
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
-  "branch": "test/ci-bots",
+  "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
     ".coderabbit.yaml",
@@ -81,10 +81,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 4734,
-    "cache_creation_tokens": 58017,
-    "cache_read_tokens": 31800998,
-    "output_tokens": 46163,
-    "api_call_count": 40
+    "input_tokens": 8909,
+    "cache_creation_tokens": 1601517,
+    "cache_read_tokens": 23063318,
+    "output_tokens": 30720,
+    "api_call_count": 29
   }
 }

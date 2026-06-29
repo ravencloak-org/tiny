@@ -3,8 +3,8 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "8800a864-e1cb-4d13-9744-9d16ef2a83c7",
   "strategy": "manual-commit",
-  "created_at": "2026-06-29T17:36:01.826528Z",
-  "branch": "test/ci-bots",
+  "created_at": "2026-06-29T18:40:40.322923Z",
+  "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
     ".coderabbit.yaml",
@@ -74,23 +74,23 @@
     "site/next.config.ts"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "2369f659-7fb9-4e40-8384-5c901e092c40",
-  "checkpoint_transcript_start": 4463,
-  "transcript_lines_at_start": 4463,
+  "transcript_identifier_at_start": "bf7bf0ee-1570-48f9-9386-7c6f2e9ba16f",
+  "checkpoint_transcript_start": 4823,
+  "transcript_lines_at_start": 4823,
   "token_usage": {
-    "input_tokens": 4734,
-    "cache_creation_tokens": 58017,
-    "cache_read_tokens": 31800998,
-    "output_tokens": 46163,
-    "api_call_count": 40
+    "input_tokens": 8909,
+    "cache_creation_tokens": 1601517,
+    "cache_read_tokens": 23063318,
+    "output_tokens": 30720,
+    "api_call_count": 29
   },
   "initial_attribution": {
-    "calculated_at": "2026-06-29T17:36:01.219916Z",
+    "calculated_at": "2026-06-29T18:40:39.713548Z",
     "agent_lines": 0,
-    "human_added": 1519,
-    "human_modified": 3,
+    "human_added": 861,
+    "human_modified": 22,
     "human_removed": 0,
-    "total_committed": 1519,
+    "total_committed": 861,
     "agent_percentage": 0
   }
 }
