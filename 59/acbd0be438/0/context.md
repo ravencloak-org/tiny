@@ -219,3 +219,7 @@ redployed, still 404
 
 working now
 
+### Prompt 50
+
+phase 5 first and if possible phase 4 in parallel using different worktree
+

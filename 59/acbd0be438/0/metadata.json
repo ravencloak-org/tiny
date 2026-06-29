@@ -3,9 +3,9 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "8800a864-e1cb-4d13-9744-9d16ef2a83c7",
   "strategy": "manual-commit",
-  "created_at": "2026-06-29T09:55:04.635284Z",
+  "created_at": "2026-06-29T12:24:26.770849Z",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 0,
   "files_touched": [
     ".coderabbit.yaml",
     ".env.example",
@@ -63,22 +63,22 @@
   ],
   "agent": "Claude Code",
   "transcript_identifier_at_start": "498d1305-9dc9-4f66-a216-c3adb969f082",
-  "checkpoint_transcript_start": 3376,
-  "transcript_lines_at_start": 3376,
+  "checkpoint_transcript_start": 3690,
+  "transcript_lines_at_start": 3690,
   "token_usage": {
-    "input_tokens": 8828,
-    "cache_creation_tokens": 641903,
-    "cache_read_tokens": 19633623,
-    "output_tokens": 34971,
-    "api_call_count": 33
+    "input_tokens": 10097,
+    "cache_creation_tokens": 1336442,
+    "cache_read_tokens": 7268359,
+    "output_tokens": 24285,
+    "api_call_count": 13
   },
   "initial_attribution": {
-    "calculated_at": "2026-06-29T09:55:04.236226Z",
+    "calculated_at": "2026-06-29T12:24:26.222625Z",
     "agent_lines": 0,
-    "human_added": 1500,
-    "human_modified": 22,
+    "human_added": 2571,
+    "human_modified": 44,
     "human_removed": 0,
-    "total_committed": 1500,
+    "total_committed": 2571,
     "agent_percentage": 0
   }
 }

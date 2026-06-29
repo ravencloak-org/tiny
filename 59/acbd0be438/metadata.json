@@ -3,7 +3,7 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 0,
   "files_touched": [
     ".coderabbit.yaml",
     ".env.example",
@@ -69,10 +69,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 8828,
-    "cache_creation_tokens": 641903,
-    "cache_read_tokens": 19633623,
-    "output_tokens": 34971,
-    "api_call_count": 33
+    "input_tokens": 10097,
+    "cache_creation_tokens": 1336442,
+    "cache_read_tokens": 7268359,
+    "output_tokens": 24285,
+    "api_call_count": 13
   }
 }
