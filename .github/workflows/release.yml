@@ -39,6 +39,16 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
 
+      - name: Build and push marketing site image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./site
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-site:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}-site:latest
+
       - name: Create GitHub release
         run: gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --notes-file CHANGELOG.md --verify-tag || gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --generate-notes
         env:

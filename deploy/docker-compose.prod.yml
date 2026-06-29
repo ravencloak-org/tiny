@@ -56,6 +56,15 @@ services:
     # Exposed via the host's cloudflared daemon: point that tunnel's ingress at
     # http://localhost:18000 (the published host port below) for tiny.ravencloak.org.
 
+  # Marketing website (static Next.js export → nginx). Served at
+  # tiny.ravencloak.org; point the host cloudflared tunnel ingress at
+  # http://localhost:18080. The API lives separately at tiny-api.ravencloak.org.
+  site:
+    image: ghcr.io/ravencloak-org/tiny-site:${SITE_TAG:-latest}
+    ports:
+      - "${SITE_PORT:-18080}:80"
+    restart: unless-stopped
+
 volumes:
   clickhouse_data:
   redis_data:

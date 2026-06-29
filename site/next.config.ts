@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Static marketing site — export to plain HTML/JS, served by nginx.
+  output: "export",
+  images: { unoptimized: true },
 };
 
 export default nextConfig;

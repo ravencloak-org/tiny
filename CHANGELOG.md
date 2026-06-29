@@ -4,6 +4,16 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-06-29
+
+### Added
+- Marketing website deploy: static Next.js export served by nginx
+  (`site/Dockerfile`), published as `ghcr.io/ravencloak-org/tiny-site` by the
+  release workflow, and a `site` service in the prod compose (port 18080).
+- API and website split across hosts: site at `tiny.ravencloak.org`, API at
+  `tiny-api.ravencloak.org` (first-level subdomain — Cloudflare Universal SSL
+  doesn't cover second-level like `api.tiny.*`).
+
 ## [0.1.1] — 2026-06-29
 
 ### Added
@@ -68,5 +78,6 @@ publishing + deployment). Single `tr` binary = server + CLI.
 - `/v0/sql` uses the `readonly=2` setting; a dedicated read-only CH user is the
   production upgrade.
 
+[0.1.2]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.0
