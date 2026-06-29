@@ -100,7 +100,7 @@ TinyRaven exposes **identical APIs** to Tinybird. Existing Tinybird client code 
 
 ### File Format Parity
 
-`.datasource` files (see `docs/adr/0008-datasource-reject-undefined-no-schema-on-write.md`): default engine `MergeTree ORDER BY tuple()` when `ENGINE` omitted; all `ENGINE_*` forwarded to ClickHouse verbatim. Ingestion to an undefined datasource is rejected (no schema-on-write in MVP).
+`.datasource` files (see `docs/adr/0008-datasource-reject-undefined-no-schema-on-write.md`): default engine `MergeTree ORDER BY tuple()` when `ENGINE` omitted; all `ENGINE_*` forwarded to ClickHouse verbatim. Ingestion to an undefined datasource is rejected (no schema-on-write in MVP). **Validation (ADR 0027):** Go does structural + referential checks at parse/deploy time (file parses, `SCHEMA` present, sorting/partition/TTL key columns exist in `SCHEMA`); ClickHouse owns all semantic validation (types, engine params) at `CREATE TABLE`; `tr deploy` validates every file before applying any.
 ```
 SCHEMA >
   event_id String,
@@ -192,6 +192,7 @@ type Gatherer struct {
 - Static/admin tokens never expire (TTL only on cache + short-lived client tokens).
 - Bootstrap: auto-generate `ADMIN` token on first init, print once, write to `~/.tinyraven/config.yml` (idempotent).
 - MVP scopes: `ADMIN`, `WORKSPACE:READ_ALL`, per-pipe `READ`. Resource tokens declared in `.pipe`/`.datasource`, materialized on `tr deploy`.
+- **Resource-token materialization (see `docs/adr/0027-resource-token-materialization-on-deploy.md`):** `TOKEN "name" READ` line — name in git, value never. Deploy idempotently upserts (generate value if absent, print once; **never rotate** existing). Scopes = union across all files declaring the name, re-applied each deploy. Deploy reconciles **only file-declared** tokens — `ADMIN` + `tr token create` are manual, never pruned. Orphan (declared nowhere) → deploy **warns, does not delete**; revoke explicitly via `tr token rm <name>` / `tr deploy --prune-tokens`.
 
 **SQL read-only enforcement (see `docs/adr/0011-sql-readonly-via-clickhouse-profile.md`):** `/v0/sql` + pipe reads run under a dedicated ClickHouse `readonly=2` user + resource caps — ClickHouse enforces, TinyRaven never parses SQL to block writes. Separate read-write CH user for Gatherer + `tr deploy` DDL.
 
