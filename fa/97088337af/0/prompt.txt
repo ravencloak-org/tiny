@@ -1,0 +1,228 @@
+Read Handoff md file and continue
+
+---
+
+Base directory for this skill: /Users/jobinlawrance/.claude/skills/grill-with-docs
+
+<what-to-do>
+
+Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time, waiting for feedback on each question before continuing.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
+</what-to-do>
+
+<supporting-info>
+
+## Domain awareness
+
+During codebase exploration, also look for existing documentation:
+
+### File structure
+
+Most repos have a single context:
+
+```
+/
+├── CONTEXT.md
+├── docs/
+│   └── adr/
+│       ├── 0001-event-sourced-orders.md
+│       └── 0002-postgres-for-write-model.md
+└── src/
+```
+
+If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The map points to where each one lives:
+
+```
+/
+├── CONTEXT-MAP.md
+├── docs/
+│   └── adr/                          ← system-wide decisions
+├── src/
+│   ├── ordering/
+│   │   ├── CONTEXT.md
+│   │   └── docs/adr/                 ← context-specific decisions
+│   └── billing/
+│       ├── CONTEXT.md
+│       └── docs/adr/
+```
+
+Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. If no `docs/adr/` exists, create it when the first ADR is needed.
+
+## During the session
+
+### Challenge against the glossary
+
+When the user uses a term that conflicts with the existing language in `CONTEXT.md`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
+
+### Sharpen fuzzy language
+
+When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
+
+### Discuss concrete scenarios
+
+When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
+
+### Cross-reference with code
+
+When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+
+### Update CONTEXT.md inline
+
+When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
+
+`CONTEXT.md` should be totally devoid of implementation details. Do not treat `CONTEXT.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
+
+### Offer ADRs sparingly
+
+Only offer to create an ADR when all three are true:
+
+1. **Hard to reverse** — the cost of changing your mind later is meaningful
+2. **Surprising without context** — a future reader will wonder "why did they do it this way?"
+3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
+
+If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+
+</supporting-info>
+
+---
+
+yes go for recommended
+
+---
+
+what's recommended, can't we use any well known library?
+
+---
+
+Yes, also let's look at the previously decided questionnaires of the grilling and see if we can replace it with any libraries that we can add on instead of reinventing the wheel and fasten the MVP release.
+
+---
+
+all of the above in parallel
+
+---
+
+continue to deploy locking
+
+---
+
+go for recomended
+
+---
+
+continue to OpenAPI, delete and create a new /handoff with details so far so I can use another agent for monetization
+
+---
+
+go for recommended
+
+---
+
+continue
+
+---
+
+go for recommended, also all sources like kafka, files etc will be there right?
+
+---
+
+go for recommended
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - **Initial:** "Read Handoff md file and continue" — resume the `grill-with-docs` design interview on TinyRaven (self-hosted, drop-in Tinybird alternative in Go over OSS ClickHouse; pre-code repo, planning docs only).
+   - **Core ongoing task:** Run the `grill-with-docs` skill — walk the design dependency tree one question at a time, each with a recommended answer, wait for user feedback, then capture each locked decision as ADR + glossary term (if domain language) + reconciled planning docs + GitHub issue updates.
+   - **Library-reuse lens (added Q16):** "can't we use any well known library?" then "let's look at the previously decided questionnaires of the grilling and see if we can replace it with any libraries that we can add on instead of reinventing the wheel and fasten the MVP release." — apply a reuse-before-reinvent, stdlib-before-dep audit to speed MVP.
+   - **Monetization (queued):** "lets also grill on monetization for this towards the end" — a flagged late grill node about TinyRaven's business model (Apache-2.0, self-hosted).
+   - **Handoff rewrite:** "delete and create a new /handoff with details so far so I can use another agent for monetization" — rewrite HANDOFF.md fresh so another agent can pick up monetization.
+   - **Connectors clarification (Q20):** "all sources like kafka, files etc will be there right?"
+
+2. Key Technical Concepts:
+   - TinyRaven: Go + OSS ClickHouse, 100% Tinybird API parity, single binary (server + `tr` CLI), Apache 2.0, single-tenant, API-first (no dashboard).
+   - Gatherer: in-process Go channel + goroutine batching component, flush on `max(10k events, 5s)`; reused for `pipe_stats`, quarantine, and now an internal-datasource pattern.
+   - ADR-driven design capture (grill-with-docs skill); ADRs in `docs/adr/00NN-slug.md`, only when hard-to-reverse AND surprising AND a real trade-off.
+   - Redis-only metadata (no Postgres), git = source of truth; Branch = ClickHouse DB `tr_{branch}`.
+   - Library choices locked this session: `go-chi/httprate` (rate limit), `prometheus/client_golang` (metrics), `redis/go-redis/v9`, `expr-lang/expr` (template control flow Phase 2), `getkin/kin-openapi` (OpenAPI), stdlib `log/slog` + `encoding/json`.
+   - Tinybird parity behaviors: quarantine datasource (`{ds}_quarantine`), `{"successful_rows":N,"quarantined_rows":M}` response, error envelope (ADR 0012).
+   - ClickHouse native engines for connectors (Kafka engine, s3()/url()/file(), PostgreSQL engine) instead of building connector services.
+   - `clickhouse-go` batch insert is block-atomic → forces row validation in Go before buffering (can't selectively reject rows in CH).
+
+3. Files and Code Sections:
+   - **HANDOFF.md** (rewritten fully):
+     - Why: User asked to delete + recreate so another agent does monetization. Now contains a top banner flagging monetization as next agent's priority, all 17 ADRs in the decisions table (✦ marks Q15/16/17/18 locked this session), Locked Dependencies list, 10 remaining technical nodes, capture protocol, active modes. (Note: this was written BEFORE Q19/Q20 were locked, so it lists "ingestion details" as remaining node #1 and does not yet include ADR 0018/0019 — may need a refresh if user wants it current through Q20.)
+   - **docs/adr/0014-pipe-stats-via-gatherer.md** (created): pipe_stats fed through same Gatherer, async/best-effort, internal datasource. Rejected sync-INSERT-per-query and dedicated stats-writer.
+   - **docs/adr/0015-rate-limit-via-httprate.md** (created): `go-chi/httprate` in-memory sliding-window per-token; rejected hand-rolled Redis fixed-window and Redlock; in-memory not Redis (single-node); `httprate-redis` is the multi-node upgrade path.
+   - **docs/adr/0003-pipe-templating-parameterized-queries.md** (AMENDED): Changed scope to "MVP (Phase 1): value params only — zero template parser"; control flow deferred to Phase 2 using `github.com/expr-lang/expr` (thin block tokenizer delegating condition eval, no hand-rolled evaluator); long-tail functions Phase 2+.
+   - **docs/adr/0016-deploy-lock-per-branch-redis.md** (created): per-branch Redis lock `SET deploy:lock:tr_{branch} {deploy-id} NX EX {ttl}`, fail-fast on contention, owner-checked Lua release `if redis.call('get',k)==id then redis.call('del',k)`, stale TTL default ~15min, no Redlock/redsync (single Redis). Ceiling: deploy longer than TTL → heartbeat is upgrade path.
+   - **docs/adr/0017-openapi-runtime-from-registry.md** (created): `/v0/openapi.json` built at runtime from pipe registry via `getkin/kin-openapi`; fixed `/v0` = static base fragment, dynamic per-pipe paths from `{{Type(name)}}` value-params; rejected swaggo (can't see dynamic paths) and hand-maintained yaml; Swagger UI deferred.
+   - **docs/adr/0018-events-quarantine-validate-in-go.md** (created): `/v0/events?name={ds}` accepts NDJSON line-by-line or single JSON; validate-in-Go before buffering (forced by clickhouse-go block-atomic insert); bad rows → `{ds}_quarantine` table via Gatherer; 202 + `{successful_rows, quarantined_rows}`; `name=` required→400; max body default 10MB→413. Rejected reject-whole-batch and let-CH-reject.
+   - **docs/adr/0019-connectors-via-clickhouse-engines.md** (created): Kafka/S3/Postgres = ClickHouse-native engines declared in `.datasource`, `tr deploy` creates CH objects, CH does the pulling; not built connector services. Events API (Gatherer) remains only first-class TinyRaven-owned ingestion. Parity gap: Tinybird connectors are managed; TinyRaven's are CH-native/user-operated. Steers contributors away from writing a Kafka consumer.
+   - **PROMPT.md** (multiple edits):
+     - Added "### Locked Dependencies (lean — prefer stdlib, reuse before reinvent)" table after the chi import block (~line 43), listing chi, httprate, clickhouse-go/v2, go-redis/v9, cobra+viper, prometheus/client_golang, expr-lang/expr, kin-openapi, log/slog, encoding/json, with ADR refs and "No new dependency is added for what a few lines of stdlib already do."
+     - Template section (~L161-163): rewrote to MVP value-params-only / control-flow-deferred-to-Phase-2-via-expr.
+     - L412: resolved open question `[x] SQL template parser: RESOLVED → MVP value params only...`.
+     - Metrics line (~L77): `via prometheus/client_golang`.
+     - pipe_stats observability table line (~L201): added Gatherer-fed/ADR 0014 ref.
+     - Phase 5 connector deliverables (~L414-416): rewrote to CH-native-engine templates with ADR 0019 ref. **This was the most recent edit.**
+   - **CONTEXT.md** (edits): Added `pipe_stats` glossary term and `Quarantine` glossary term (both after "Source of truth" entry).
+   - **GitHub issues** (ravencloak-org/tiny): #13 (pipe_stats), #17 (rate-limit), #7 (rescoped value-params-MVP), #61 (created: control-flow via expr, Phase 2), #14 (metrics lib), #16 (deploy lock), #12 (OpenAPI runtime), #2 (events quarantine), #46/#47/#48 (connectors → CH-native engines).
+
+4. Errors and fixes:
+   - **Q16 initial recommendation rejected:** I recommended hand-rolled Redis fixed-window rate limiting. User feedback: "what's recommended, can't we use any well known library?" Fix: researched via context7, switched to `go-chi/httprate` (sliding-window, library, same author as router). This established the library-reuse lens that shaped the rest of the session.
+   - Several "Read content stale" / file-modified warnings on PROMPT.md and CONTEXT.md (caused by PAI linter/hooks touching files); worked around by using Edit with unique old_string anchors rather than re-reading.
+
+5. Problem Solving:
+   - Identified the biggest MVP accelerator: deleting the hand-written Jinja control-flow evaluator from Phase 1 (value-params-only ships sooner; control flow → Phase 2 on `expr-lang/expr`).
+   - Resolved the long-standing open PROMPT.md L412 question (template parser: build vs library).
+   - Established that row validation MUST be in Go (clickhouse-go block-atomic insert can't selectively quarantine).
+   - Established connectors = lean on CH engines (off-mission to rebuild Tinybird's managed connector service).
+
+6. All user messages:
+   - "Read Handoff md file and continue"
+   - "yes go for recommended" (Q15)
+   - "what's recommended, can't we use any well known library?" (Q16)
+   - "Yes, also let's look at the previously decided questionnaires of the grilling and see if we can replace it with any libraries that we can add on instead of reinventing the wheel and fasten the MVP release." (audit request)
+   - "all of the above in parallel" (lock audit A-E)
+   - "Yes go for recommended" (Q17) — note: user also injected mid-work "lets also grill on monetization for this towards the end"
+   - "go for recomended" (Q18)
+   - "continue to OpenAPI, delete and create a new /handoff with details so far so I can use another agent for monetization"
+   - "continue" (to deploy locking — earlier) / "continue to deploy locking"
+   - "go for recommended, also all sources like kafka, files etc will be there right?" (Q19 + connectors question)
+   - "go for recommended" (Q20)
+   - Security/operational constraints in effect (from CLAUDE.md / project): Go only (no Kotlin/Python/JVM in core); router is `chi`; binary=`tr`, package=`tinyraven` (never `tb`); ClickHouse OSS only; no dashboard; Tinybird API parity is the spec; use `bun`/`bunx` never npm/npx for JS tooling. context-mode MCP rules: curl/wget/WebFetch BLOCKED (use ctx_* tools); but `gh` CLI is permitted and was used throughout. Keep prose terse (Caveman), code/docs/commits/ADRs written normally.
+
+7. Pending Tasks:
+   - **Monetization grill** (user-flagged "towards the end") — TinyRaven business model: open-core vs managed-cloud vs support/sponsorship vs dual-license, squared against the free-software mission. Intended for another agent via HANDOFF.md, but user may want it grilled here.
+   - Remaining technical grill nodes (from HANDOFF): hot reload semantics (#10), health check depth (#4), GitHub Actions CI/CD (#26), pipe query limits/pagination, API versioning, replication/multi-node HA (likely defer), resource-token materialization, datasource validation (#8 area), Swagger UI (deferred from ADR 0017).
+
+8. Current Work:
+   Locking Q20 (connector mechanism). User approved "go for recommended" for CH-native-engines-not-built-connectors. I had: created `docs/adr/0019-connectors-via-clickhouse-engines.md`; updated issues #46 (Kafka), #47 (S3), #48 (PostgreSQL) to CH-native-engine mechanism; and was reconciling PROMPT.md — the most recent tool action was editing PROMPT.md Phase 5 deliverables (L414-416) from "Kafka connector (consumer group...)" etc. to:
+   ```
+   **Deliverables:** (connectors = ClickHouse-native engines, not built services — see `docs/adr/0019-connectors-via-clickhouse-engines.md`)
+   - [ ] Kafka: `.datasource` template for `ENGINE = Kafka(...)` + MV; `tr deploy` creates CH objects (CH runs the consumer)
+   - [ ] S3 / files: `.datasource` templates for `s3()`/`url()`/`file()` + `ENGINE = S3`
+   - [ ] PostgreSQL: `ENGINE = PostgreSQL(...)` / `postgresql()` table function (optional CDC via `MaterializedPostgreSQL`)
+   ```
+   Q20 capture is essentially complete (ADR 0019 ✓, issues #46/#47/#48 ✓, PROMPT.md Phase 5 ✓). No glossary term needed (connector mechanism = not new domain language). The session has not been committed to git (working tree has uncommitted ADRs 0014-0019, amended 0003, PROMPT.md, CONTEXT.md, HANDOFF.md) — user was told this is "left for you."
+
+9. Optional Next Step:
+   Confirm Q20 capture is complete and present the brief capture summary to the user (ADR 0019 ✓ · issues #46/#47/#48 ✓ · PROMPT.md Phase 5 ✓), then ask which node to grill next — per the established one-question-at-a-time pattern. The user's last explicit instruction was "go for recommended" for Q20 (connectors); the immediately prior pattern is: after each lock, present a terse capture confirmation and offer the next technical node OR the queued monetization grill. Direct quote of the standing instruction shaping next steps: "lets also grill on monetization for this towards the end" and the per-turn pattern "continue" — so the next step is to confirm completion and ask whether to continue with the next technical node (e.g., hot reload / health check / ingestion-adjacent) or pivot to the flagged monetization grill. Do NOT start monetization or a new node without user confirmation of which one.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/jobinlawrance/.REDACTED.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+---
+
+continue
+
+---
+
+go for recomended

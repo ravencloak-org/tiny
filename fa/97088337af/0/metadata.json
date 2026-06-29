@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "fa97088337af",
+  "session_id": "8800a864-e1cb-4d13-9744-9d16ef2a83c7",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-29T05:22:34.669644Z",
+  "branch": "main",
+  "checkpoints_count": 8,
+  "files_touched": [
+    "CONTEXT.md",
+    "HANDOFF.md",
+    "PROMPT.md",
+    "docs/adr/0003-pipe-templating-parameterized-queries.md",
+    "docs/adr/0014-pipe-stats-via-gatherer.md",
+    "docs/adr/0015-rate-limit-via-httprate.md",
+    "docs/adr/0016-deploy-lock-per-branch-redis.md",
+    "docs/adr/0017-openapi-runtime-from-registry.md",
+    "docs/adr/0018-events-quarantine-validate-in-go.md",
+    "docs/adr/0019-connectors-via-clickhouse-engines.md",
+    "docs/adr/0020-hot-reload-dev-only-pipes-instant-datasources-via-deploy.md",
+    "docs/adr/0020-license-apache-not-copyleft.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "12e4e60c-3f54-4394-ba7f-40be29341d83",
+  "token_usage": {
+    "input_tokens": 39907,
+    "cache_creation_tokens": 493439,
+    "cache_read_tokens": 15400643,
+    "output_tokens": 50270,
+    "api_call_count": 79
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-29T05:22:34.611426Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 163,
+    "human_removed": 52,
+    "total_committed": 162,
+    "agent_percentage": 0
+  }
+}
