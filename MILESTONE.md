@@ -26,7 +26,7 @@
 curl -X POST localhost:8000/v0/events?name=events \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"user_id":"alice","event":"page_view"}'
-# → 201 {"status":"ok"}
+# → 202 Accepted {"status":"ok"}   (ack-on-buffer; see docs/adr/0004)
 
 curl "localhost:8000/v0/pipes/user_metrics.json?user_id=alice" \
   -H "Authorization: Bearer $TOKEN"
@@ -71,7 +71,7 @@ curl localhost:8000/v0/metrics
 **Deliverable:** Full development workflow parity with Tinybird
 
 ### Must Ship
-- [ ] Branch isolation: `CREATE DATABASE workspace_{branch}` per git branch
+- [ ] Branch isolation: `CREATE DATABASE tr_{branch}` per git branch (single-tenant; workspace = deployment)
 - [ ] `tr local start --branch feature-x` → isolated ClickHouse DB
 - [ ] `tr deploy` detects git branch → targets correct workspace DB
 - [ ] Materialized views from `.pipe` files with `TYPE materialization` + `TARGET_TABLE`
@@ -84,15 +84,15 @@ curl localhost:8000/v0/metrics
 ```bash
 git checkout -b feature-new-metric
 tr local start --branch feature-new-metric
-# ✓ Started TinyRaven on workspace_feature_new_metric
+# ✓ Started TinyRaven on tr_feature_new_metric
 
 # Edit user_metrics.pipe, add new field
 tr deploy
-# ✓ Branch deploy: workspace_feature_new_metric updated
+# ✓ Branch deploy: tr_feature_new_metric updated
 
 git checkout main && git merge feature-new-metric
 tr deploy
-# ✓ Production deploy: workspace_main updated (zero downtime, EXCHANGE TABLES)
+# ✓ Production deploy: tr_main updated (zero downtime, EXCHANGE TABLES)
 ```
 
 ---

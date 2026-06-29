@@ -1,0 +1,9 @@
+# Local tooling
+.claude/
+.entire/
+.serena/
+.mcp_data/
+
+# Scratch
+*.log
+.DS_Store

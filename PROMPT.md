@@ -22,15 +22,17 @@ TinyRaven is an **open-source, self-hosted, drop-in alternative to Tinybird**, b
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
 | **Backend server** | Go (`net/http` + `chi` router) | Goroutines ideal for the Gatherer (concurrent batching), single binary, fast startup, low memory for K8s |
-| **CLI binary** | Go (same binary as server, `tr` subcommand) | — |
-| **Database** | ClickHouse OSS (Apache 2.0) | The same OLAP engine Tinybird uses, free to self-host |
-| **Metadata store** | PostgreSQL | Schema registry, token storage, pipe definitions |
-| **Cache** | Redis | Token validation cache, query result caching, rate limiting |
-| **Object storage** | S3 / MinIO (self-hosted S3-compatible) | ClickHouse cold storage backend |
+| **CLI binary** | Go (same binary as server, `tr` subcommand) — `cobra` (commands) + `viper` (config: `~/.tinyraven/config.yml` ⊕ `TINYBIRD_*` env ⊕ flags) | Standard Go CLI stack (kubectl/gh/docker). OpenTUI rejected: TypeScript (breaks Go-only) and a full-screen TUI framework — `tr` is a command CLI, not a TUI. |
+| **Database** | ClickHouse OSS (Apache 2.0), **target 26.3 LTS** (pin `clickhouse/clickhouse-server:26.3`) | Same OLAP engine Tinybird uses, free to self-host. LTS floor lets us build on query_cache, refreshable MV, native JSON, parameterized queries. See `docs/adr/0009-clickhouse-26.3-lts-feature-baseline.md`. |
+| **Metadata store** | Redis (AOF-persisted) | Schema registry, token storage, pipe definitions, deploy state. Matches Tinybird. See `docs/adr/0001-redis-only-metadata.md`. |
+| **Cache** | Redis | Token validation cache + rate limiting only. **Query-result caching = ClickHouse native `query_cache`** (per-pipe TTL), not Redis. See `docs/adr/0009`. |
+| ~~**Object storage**~~ | — (out of scope) | Cold-storage tiering is a ClickHouse `storage_policy` (S3 disk) configured at the ClickHouse level — TinyRaven writes no code for it. Documented as a deploy recipe later, not a feature. |
 
 **Why Go, not Kotlin:** The core work is I/O + ClickHouse proxying + event batching — not complex business logic. Goroutines + channels are a natural fit for the Gatherer. Single binary deployment beats JVM cold start for Kubernetes. Kotlin was rejected despite existing SVOD platform being Kotlin, because TinyRaven is a separate, independently deployed service.
 
-**HTTP Framework:** `net/http` + `chi` router (minimal, idiomatic, MIT licensed).
+**HTTP Framework:** `net/http` + `chi` router (minimal, idiomatic, MIT licensed). chi is a thin router over stdlib `http.Handler`, not a framework.
+
+**ClickHouse access (see `docs/adr/0013-clickhouse-access-split-native-insert-http-query.md`):** split — `clickhouse-go` v2 native driver (TCP 9000) for Gatherer batched inserts; ClickHouse HTTP interface (8123) via stdlib `net/http` for `/v0/pipes` + `/v0/sql` (stream `FORMAT JSONEachRow`, header passthrough, readonly user).
 
 ```go
 import (
@@ -76,7 +78,7 @@ TinyRaven exposes **identical APIs** to Tinybird. Existing Tinybird client code 
 
 ### File Format Parity
 
-`.datasource` files:
+`.datasource` files (see `docs/adr/0008-datasource-reject-undefined-no-schema-on-write.md`): default engine `MergeTree ORDER BY tuple()` when `ENGINE` omitted; all `ENGINE_*` forwarded to ClickHouse verbatim. Ingestion to an undefined datasource is rejected (no schema-on-write in MVP).
 ```
 SCHEMA >
   event_id String,
@@ -118,7 +120,11 @@ export TINYBIRD_TOKEN=new_token
 tr deploy   # same project files, different backend
 ```
 
-Config file: `~/.tinyraven/config.yml` (same format as `~/.tinybird/config.yml`)
+**Config split (secret vs non-secret):**
+- `~/.tinyraven/config.yml` — user/home, **gitignored**. Holds the **token** and **host** (secrets + per-machine creds). Same format as `~/.tinybird/config.yml`. Shared across projects.
+- `.tr/config.yml` — project, **committed**. Holds project identity + non-secret deploy config (project name, `datasources/`/`pipes/` dirs, safe ClickHouse settings). **Never a token.**
+- Precedence (viper): flag > `TINYBIRD_*` env > `.tr/config.yml` > `~/.tinyraven/config.yml` > defaults. Token resolves from env > user file only (never the committed project file).
+- `tr init` writes a `.gitignore` guarding any local secret file.
 
 ---
 
@@ -149,26 +155,34 @@ type Gatherer struct {
     ch      *ClickHouseClient
 }
 ```
+- **Delivery contract (see `docs/adr/0004-ingestion-ack-on-buffer.md`):** ack-on-buffer → `/v0/events` returns **202 Accepted**. Graceful drain on SIGTERM (no loss on restart). Hard crash loses up to one batch window (at-most-once) until the optional disk WAL ships (Phase 2/3).
 
-**Pipe param injection:**
-- Parse `{{Type(name, default)}}` tokens from SQL template
-- Validate types, escape SQL injection
-- Execute via ClickHouse HTTP interface
-- Return `FORMAT JSONEachRow`
+**Pipe templating (see `docs/adr/0003-pipe-templating-parameterized-queries.md`):**
+- Value params `{{Type(name, default)}}` → ClickHouse parameterized query `{name:Type}` + params map (`param_<name>=...`). No string interpolation — injection-proof by construction. Never `text/template`.
+- Control flow `{% if %}` / `{% for %}` / `defined()` → hand-written Jinja-flavored evaluator producing final SQL; structural identifiers allowlisted.
+- MVP scope: common subset (if/elif/else, for, defined, type fns, `column()`). Full function catalog deferred to Phase 2.
+- Execute via ClickHouse HTTP interface, return `FORMAT JSONEachRow`.
 
-**Auth tokens (RBAC):**
-- Scopes: `WORKSPACE:READ_ALL`, per-pipe names
-- Stored in Redis with TTL
-- Bearer token header validation middleware
+**Auth tokens (RBAC) — see `docs/adr/0005-opaque-tokens-redis.md`:**
+- Opaque random bearer tokens; scopes stored in Redis (persistent record + short-TTL validation cache). No JWT in MVP.
+- Static/admin tokens never expire (TTL only on cache + short-lived client tokens).
+- Bootstrap: auto-generate `ADMIN` token on first init, print once, write to `~/.tinyraven/config.yml` (idempotent).
+- MVP scopes: `ADMIN`, `WORKSPACE:READ_ALL`, per-pipe `READ`. Resource tokens declared in `.pipe`/`.datasource`, materialized on `tr deploy`.
 
-**Branching:**
-- `CREATE DATABASE workspace_{branch_name}` on branch create
-- Drop on merge
+**SQL read-only enforcement (see `docs/adr/0011-sql-readonly-via-clickhouse-profile.md`):** `/v0/sql` + pipe reads run under a dedicated ClickHouse `readonly=2` user + resource caps — ClickHouse enforces, TinyRaven never parses SQL to block writes. Separate read-write CH user for Gatherer + `tr deploy` DDL.
+
+**Error contract (see `docs/adr/0012-structural-error-parity.md`):** structural parity with Tinybird — JSON `{"error":"<msg>"}`, status mapping (400/401/403/404/429/500), and `X-DB-Exception-Code` header passing through the ClickHouse exception code. Structure + codes, not message text.
+
+**Branching (see `docs/adr/0007-branch-schema-only-explicit-lifecycle.md`):**
+- `CREATE DATABASE tr_{branch}` on branch create (branch name sanitized to a valid identifier). **Schema-only — no data copied.** Prod data never auto-copied; `--with-sample N` fixtures are a later add.
+- Lifecycle is **explicit**: `tr branch rm <name>` drops the DB. No "drop on merge" (merge detection is unreliable). Optional `tr branch prune` drops orphaned branch DBs after confirmation.
 - `tr local start --branch feature-x` targets branch DB
 
-**Schema migrations:**
-- Safe path: `ALTER TABLE ADD COLUMN` with nullable/default
-- Breaking: create shadow table → backfill via MV → `EXCHANGE TABLES` atomically
+**Schema migrations (see `docs/adr/0006-migration-safe-auto-breaking-refuse.md`):**
+- `tr deploy` diffs project files vs live ClickHouse and classifies each change.
+- Safe (auto-apply): add nullable/defaulted column.
+- Breaking (drop/rename column, type change, sorting/partition key change, engine change): **refused by default** — print diff + reason, exit non-zero. `--dry-run` prints diff, applies nothing.
+- Phase 3: guarded breaking path (shadow table → MV backfill → atomic `EXCHANGE TABLES`) behind `tr deploy --allow-breaking`.
 
 ---
 
@@ -182,7 +196,7 @@ type Gatherer struct {
 | Zero-copy replication | Standard ClickHouse replication |
 | Pipes → REST API | Go handler: SQL template → param injection → CH HTTP → JSON |
 | Materialized Views | Standard ClickHouse `CREATE MATERIALIZED VIEW` |
-| Branches | `CREATE DATABASE workspace_{branch}` per git branch |
+| Branches | `CREATE DATABASE tr_{branch}` per git branch |
 | Token auth + RBAC | Go middleware + Redis |
 | Pipe stats / observability | `tinybird.pipe_stats` ClickHouse table |
 
@@ -262,9 +276,9 @@ docker run -p 8000:8000 \
 [Deploy to DigitalOcean](https://cloud.digitalocean.com/apps/new?repo=https://github.com/tinyraven/tinyraven)
 ```
 
-**Heroku mechanism:** `app.json` in repo root → defines add-ons (PostgreSQL, Redis), env vars (CLICKHOUSE_HOST), buildpack (heroku/go). User clicks → configures env vars → deploys in ~5 minutes.
+**Heroku mechanism:** `app.json` in repo root → defines add-ons (Redis, AOF-persisted), env vars (CLICKHOUSE_HOST), buildpack (heroku/go). User clicks → configures env vars → deploys in ~5 minutes.
 
-**AWS mechanism:** CloudFormation template (`cloudformation/tinyraven-template.yaml`) → provisions VPC, EC2 (downloads Go binary), RDS PostgreSQL, Elastic IP → outputs TinyRaven URL. ~10-15 minutes.
+**AWS mechanism:** CloudFormation template (`cloudformation/tinyraven-template.yaml`) → provisions VPC, EC2 (downloads Go binary), ElastiCache/Redis (persisted), Elastic IP → outputs TinyRaven URL. ~10-15 minutes.
 
 ---
 
@@ -277,7 +291,7 @@ docker run -p 8000:8000 \
 **Deliverables:**
 - [ ] Go HTTP server (`net/http` + `chi`) with `/v0/events`, `/v0/pipes/:name.json`, `/health`
 - [ ] Gatherer: in-memory ring buffer, flush on `max(10,000 events, 5s timeout)`
-- [ ] Datasource schema registry (parse `.datasource` files, store in PostgreSQL)
+- [ ] Datasource schema registry (parse `.datasource` files, store in Redis)
 - [ ] Basic pipe executor: parse `{{Type(param)}}` SQL templates, inject validated params, execute via ClickHouse HTTP
 - [ ] Token auth middleware (Bearer tokens → Redis lookup)
 - [ ] `tr local start` — Docker Compose stack (ClickHouse + TinyRaven + Redis)
@@ -311,7 +325,7 @@ docker run -p 8000:8000 \
 **Goal:** Full development workflow parity with Tinybird
 
 **Deliverables:**
-- [ ] Branches: isolated ClickHouse database per git branch (`workspace_main`, `workspace_feature-x`)
+- [ ] Branches: isolated ClickHouse database per git branch (`tr_main`, `tr_feature_x`)
 - [ ] `tr local start --branch feature-x` (preview environment)
 - [ ] `tr deploy` detects current git branch, targets correct workspace
 - [ ] Materialized views: auto-create ClickHouse MVs from pipes marked `TYPE materialization`
@@ -346,17 +360,17 @@ docker run -p 8000:8000 \
 
 **One-Click Cloud Deploy:**
 - [ ] `app.json` in repo root (Heroku Button)
-  - Add-ons: `heroku-postgresql:mini`, `heroku-redis:mini`
+  - Add-ons: `heroku-redis:mini` (AOF-persisted; system of record for metadata)
   - Env vars: `CLICKHOUSE_HOST` (required), `TINYRAVEN_PORT`, `TINYRAVEN_ENV`
   - Buildpack: `heroku/go`
 - [ ] `cloudformation/tinyraven-template.yaml` (AWS)
-  - Resources: VPC, PublicSubnet, EC2 (UserData downloads binary + starts systemd service), RDS PostgreSQL, ElasticIP
-  - Parameters: InstanceType (default `t3.medium`), RDS credentials, KeyPair, ClickHouse endpoint
+  - Resources: VPC, PublicSubnet, EC2 (UserData downloads binary + starts systemd service), ElastiCache/Redis (persisted), ElasticIP
+  - Parameters: InstanceType (default `t3.medium`), KeyPair, ClickHouse endpoint
   - Outputs: TinyRavenURL, DatabaseEndpoint, SSHCommand
   - Upload template to S3 → generate CloudFormation quick-launch URL
 - [ ] `railway.json` (Railway)
 - [ ] `app.yaml` (DigitalOcean App Platform)
-- [ ] `docker-compose.yml` (VPS/self-hosted, includes ClickHouse + TinyRaven + Redis + PostgreSQL)
+- [ ] `docker-compose.yml` (VPS/self-hosted, includes ClickHouse + TinyRaven + Redis)
 
 **Kubernetes:**
 - [ ] Helm chart (`charts/tinyraven/`) with `values.yaml` defaults
@@ -396,7 +410,7 @@ docker run -p 8000:8000 \
 ## Pending Decisions (Not Yet Made)
 
 - [ ] **SQL template parser**: build custom or use an existing Go text template library?
-- [ ] **Metadata storage**: PostgreSQL (external dependency) vs ClickHouse system tables (zero extra infra)?
+- [x] **Metadata storage**: RESOLVED → Redis only (AOF-persisted), matching Tinybird. Postgres dropped. See `docs/adr/0001-redis-only-metadata.md`.
 - [ ] **Installation script**: `curl https://tinyraven.io/install.sh | bash` — implement in Phase 4?
 - [ ] **Tinybird CLI passthrough mode**: support `TINYRAVEN_PASSTHROUGH=true` to forward requests to real Tinybird (for gradual migration)?
 
@@ -409,6 +423,7 @@ docker run -p 8000:8000 \
 - **No ClickHouse fork** (use OSS ClickHouse as-is; skip packed part format and zero-copy optimizations)
 - **No AI/LLM features** in MVP (Tinybird has "Tinybird Code" AI agent — defer this to community)
 - **No Kotlin code** (TinyRaven is 100% Go; the SVOD platform stays Kotlin separately)
+- **No object-storage management** (S3/MinIO cold tiering is a ClickHouse `storage_policy` config, not TinyRaven code — deploy-recipe doc only)
 
 ---
 
@@ -474,7 +489,7 @@ tinyraven/
 │   │   └── registry.go           # In-memory pipe store
 │   ├── datasource/
 │   │   ├── parser.go             # Parse .datasource files
-│   │   └── registry.go           # PostgreSQL-backed schema store
+│   │   └── registry.go           # Redis-backed schema store
 │   ├── clickhouse/
 │   │   └── client.go             # ClickHouse HTTP client
 │   └── auth/
