@@ -3,9 +3,10 @@
   "checkpoint_id": "767548543e70",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     "PROMPT.md",
+    "docs/adr/0020-hot-reload-dev-only-pipes-instant-datasources-via-deploy.md",
     "docs/adr/0029-api-versioning-v0-frozen-tr-namespace-native.md"
   ],
   "sessions": [
@@ -15,13 +16,20 @@
       "context": "/76/7548543e70/0/context.md",
       "content_hash": "/76/7548543e70/0/content_hash.txt",
       "prompt": "/76/7548543e70/0/prompt.txt"
+    },
+    {
+      "metadata": "/76/7548543e70/1/metadata.json",
+      "transcript": "/76/7548543e70/1/full.jsonl",
+      "context": "/76/7548543e70/1/context.md",
+      "content_hash": "/76/7548543e70/1/content_hash.txt",
+      "prompt": "/76/7548543e70/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 1395,
-    "cache_creation_tokens": 5256,
-    "cache_read_tokens": 1739083,
-    "output_tokens": 4586,
-    "api_call_count": 7
+    "input_tokens": 5851,
+    "cache_creation_tokens": 16397,
+    "cache_read_tokens": 3970038,
+    "output_tokens": 9747,
+    "api_call_count": 15
   }
 }
