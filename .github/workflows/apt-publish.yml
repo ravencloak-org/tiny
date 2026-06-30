@@ -4,7 +4,9 @@ name: APT/RPM Repo Publish
 # to the gh-pages branch on every v* tag. It runs ALONGSIDE goreleaser.yml (which
 # builds + uploads the .deb/.rpm assets to the GitHub Release) and helm-publish.yml
 # (which writes index.yaml to gh-pages root). To avoid clobbering the Helm repo we
-# publish with keep_files: true and merge into the existing branch.
+# sync ONLY the apt/ and rpm/ subtrees (rsync --delete) and never write the
+# gh-pages root, so the Helm index.yaml/index.html/.nojekyll survive. A shared
+# concurrency group serializes this against helm-publish so the two never race.
 #
 # End result for users:
 #   curl -fsSL https://ravencloak-org.github.io/tiny/apt/KEY.gpg \
@@ -27,9 +29,11 @@ on:
         description: "Existing release tag to (re)publish, e.g. v0.1.0"
         required: true
 
-# Serialize repo publishes so two tags can't race each other onto gh-pages.
+# Serialize ALL gh-pages writers (this + helm-publish.yml) under one shared
+# group so apt/rpm and the Helm index.yaml can never push concurrently and
+# reject each other. cancel-in-progress:false → runs queue, none are dropped.
 concurrency:
-  group: pages-apt-publish
+  group: gh-pages-publish
   cancel-in-progress: false
 
 permissions:
@@ -103,9 +107,10 @@ jobs:
           # Standard dists layout: <base>/apt  suite=stable  component=main  arch=amd64,arm64
           base=public/apt
           mkdir -p "$base/pool/main"
-          # Bring the already-published pool in so pruning works across releases:
-          # gh-pages is published with keep_files:true, so prior .debs accumulate
-          # there and must be reconciled here rather than rebuilt from scratch.
+          # Bring the already-published pool in so keep-2 spans releases. The
+          # publish step below mirrors public/apt/ onto gh-pages with rsync
+          # --delete, so anything NOT carried forward here is removed from the
+          # remote. Pull prior .debs, prune to 2, and only the surplus is deleted.
           git fetch --no-tags --depth=1 origin gh-pages >/dev/null 2>&1 || true
           git archive origin/gh-pages -- apt/pool 2>/dev/null | tar -x -C public || true
           cp dl/*.deb "$base/pool/main/"
@@ -161,7 +166,8 @@ jobs:
           fi
           base=public/rpm
           mkdir -p "$base"
-          # Reconcile against the already-published rpms (gh-pages keep_files:true).
+          # Reconcile against the already-published rpms so keep-2 spans releases
+          # (the publish step mirrors public/rpm/ with rsync --delete).
           git fetch --no-tags --depth=1 origin gh-pages >/dev/null 2>&1 || true
           git archive origin/gh-pages -- rpm 2>/dev/null | tar -x -C public --wildcards 'rpm/*.rpm' || true
           cp dl/*.rpm "$base/"
@@ -190,16 +196,61 @@ jobs:
           EOF
           echo "RPM repo built:"; find "$base" -type f | sort
 
-      # keep_files: true MERGES into gh-pages without deleting the Helm index.yaml
-      # (or anything else already there). destination_dir "." merges apt/ + rpm/ at root.
-      - name: Publish to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./public
-          destination_dir: .
-          keep_files: true
-          commit_message: "apt/rpm: publish ${{ env.TAG }}"
-          user_name: "github-actions[bot]"
-          user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+      # ponytail: SCOPED, delete-aware sync replaces peaceiris keep_files:true.
+      # keep_files never deleted remote blobs, so pruned .deb/.rpm files lingered
+      # on gh-pages forever. We instead clone gh-pages and rsync ONLY the apt/ and
+      # rpm/ subtrees with --delete. rsync only ever writes or deletes UNDER the
+      # destination dir handed to it, so every gh-pages root file (Helm's
+      # index.yaml, index.html, .nojekyll, anything not in apt/ or rpm/) is
+      # provably untouched. The keep-2 prune above already bounded public/apt|rpm,
+      # so --delete now actually propagates those removals to the remote.
+      # Ceiling: a release that ships NO .rpm leaves the published rpm/ subtree
+      # alone (best-effort) instead of wiping it.
+      - name: Publish apt/ + rpm/ to gh-pages (scoped, delete-aware)
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          work="$(mktemp -d)/gh-pages"
+
+          # The shared concurrency group already serializes us against
+          # helm-publish, so a non-fast-forward should not happen; the retry is
+          # cheap insurance against any transient/external push. Each attempt
+          # re-clones the latest tip so we always rebase onto current root files.
+          for attempt in 1 2 3; do
+            rm -rf "$work"
+            if git clone --depth=1 --branch gh-pages "$remote" "$work" 2>/dev/null; then
+              :
+            else
+              # gh-pages doesn't exist yet (e.g. apt ran before helm on a fresh
+              # repo) — start a clean orphan branch with no root files to protect.
+              git clone --depth=1 "$remote" "$work"
+              git -C "$work" checkout --orphan gh-pages
+              git -C "$work" rm -rf . >/dev/null 2>&1 || true
+            fi
+
+            # apt/ is always rebuilt (guard waits for >=2 .deb), so mirror it.
+            mkdir -p "$work/apt"
+            rsync -a --delete public/apt/ "$work/apt/"
+
+            # rpm/ is best-effort: only mirror when this run actually built one,
+            # otherwise leave the published rpm repo untouched.
+            paths=(apt)
+            if [ -d public/rpm ]; then
+              mkdir -p "$work/rpm"
+              rsync -a --delete public/rpm/ "$work/rpm/"
+              paths+=(rpm)
+            fi
+
+            git -C "$work" add -A "${paths[@]}"
+            if git -C "$work" diff --cached --quiet; then
+              echo "No apt/rpm changes to publish."; exit 0
+            fi
+            git -C "$work" commit -m "apt/rpm: publish ${TAG}"
+            if git -C "$work" push origin gh-pages; then
+              echo "Published apt/rpm for ${TAG}."; exit 0
+            fi
+            echo "Push raced (attempt ${attempt}/3) — re-cloning and retrying…"
+          done
+          echo "::error::Failed to push apt/rpm to gh-pages after 3 attempts"; exit 1

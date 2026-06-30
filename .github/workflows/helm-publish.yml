@@ -16,6 +16,14 @@ on:
 permissions:
   contents: write
 
+# Shared with apt-publish.yml: both writers target the gh-pages branch, so this
+# group serializes them and prevents concurrent-push rejections. The apt/rpm
+# workflow only touches apt/ + rpm/; chart-releaser here only touches the root
+# index.yaml — disjoint paths, but they must not push at the same instant.
+concurrency:
+  group: gh-pages-publish
+  cancel-in-progress: false
+
 jobs:
   release-chart:
     runs-on: ubuntu-latest
