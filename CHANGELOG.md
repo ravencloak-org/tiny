@@ -4,6 +4,23 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] — 2026-06-30
+
+### Added
+- API read endpoints toward full Tinybird `/v0` parity: `GET /v0/datasources`, `GET /v0/datasources/{name}`, `GET /v0/pipes`, `GET /v0/pipes/{name}` (all ADMIN), plus pipe output formats `GET /v0/pipes/{name}.{csv,ndjson}` (READ-scoped) alongside the existing `.json`.
+- Distribution: signed APT + RPM repos published to GitHub Pages (`apt-get install tinyraven`); GoReleaser Scoop/AUR/Nix/winget publisher blocks (fail-safe — push only when their token exists); install matrix + `docs/install.md`.
+- `docs/parity-gaps.md` ranked `/v0` parity audit.
+
+### Changed
+- Prod deploy model: image tags pinned to `latest`; release builds `:version` + `:latest` then triggers the Dokploy deploy webhook (`pull_policy: always` recreates on the new digest). Dokploy panel env is the documented source of truth.
+- APT/RPM gh-pages publish now does a scoped `rsync --delete` of `apt/`+`rpm/` (keep-2 pool prune actually removes old blobs); `helm-publish` + `apt-publish` share a concurrency group to avoid gh-pages races.
+
+### Tests
+- `internal/apierr` and `internal/model` 0→100%; `internal/pipe` 86.7→96% (error-envelope mapping, `Token.HasScope` auth gate, registry hot-reload swap, control-flow branch + non-boolean-condition rejection).
+
+### Security
+- Rotated the admin token (purged the old value from the Dokploy env and Redis `tr:token:`).
+
 ## [0.3.0] — 2026-06-30
 
 ### Added
