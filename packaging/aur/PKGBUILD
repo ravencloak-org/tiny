@@ -1,0 +1,28 @@
+# AUR PKGBUILD TEMPLATE for TinyRaven (tinyraven-bin).
+#
+# You normally do NOT edit this by hand: the `aurs:` block in .goreleaser.yaml
+# generates the real PKGBUILD + .SRCINFO and pushes them to the AUR git remote
+# (ssh://aur@aur.archlinux.org/tinyraven-bin.git) on each release, using the
+# AUR_KEY secret. Users then run: yay -S tinyraven-bin  (or paru -S tinyraven-bin).
+#
+# pkgver / source / sha256sums are filled in automatically by GoReleaser. Kept
+# only as documentation / a manual-publish fallback.
+# Maintainer: Ravencloak <oss@ravencloak.org>
+pkgname=tinyraven-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="Open-source, self-hosted, drop-in alternative to Tinybird (binary: tr)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/ravencloak-org/tiny"
+license=('Apache-2.0')
+provides=('tinyraven')
+conflicts=('tinyraven')
+source_x86_64=("https://github.com/ravencloak-org/tiny/releases/download/v${pkgver}/tinyraven_${pkgver}_linux_amd64.tar.gz")
+source_aarch64=("https://github.com/ravencloak-org/tiny/releases/download/v${pkgver}/tinyraven_${pkgver}_linux_arm64.tar.gz")
+sha256sums_x86_64=('REPLACED_BY_GORELEASER_LINUX_AMD64')
+sha256sums_aarch64=('REPLACED_BY_GORELEASER_LINUX_ARM64')
+
+package() {
+  install -Dm755 "tr" "${pkgdir}/usr/bin/tr"
+  install -Dm644 "LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

@@ -73,14 +73,21 @@ curl "http://localhost:8000/v0/pipes/user_metrics.json?user_id=alice" \
 
 ## Install (planned)
 
-| Method | Command |
-|--------|---------|
-| Homebrew | `brew install tinyraven` |
-| APT | `sudo apt install tinyraven` |
-| SDKMAN | `sdk install tinyraven` |
-| Docker | `docker run -p 8000:8000 ghcr.io/tinyraven/tinyraven:latest` |
+| Platform | Manager | Command |
+|----------|---------|---------|
+| macOS / Linux | Homebrew | `brew tap ravencloak-org/tinyraven && brew install tinyraven` |
+| Debian / Ubuntu | APT | `sudo apt-get install tinyraven` *(after adding the repo — see below)* |
+| RHEL / Fedora | DNF/YUM | `sudo dnf install tinyraven` *(after adding the repo)* |
+| Windows | Scoop | `scoop bucket add tinyraven https://github.com/ravencloak-org/scoop-bucket && scoop install tinyraven` |
+| Windows | WinGet | `winget install Ravencloak.TinyRaven` |
+| Arch Linux | AUR | `yay -S tinyraven-bin` |
+| Nix | NUR | `nix profile install github:ravencloak-org/nur#tinyraven` |
+| Any | Docker | `docker run -p 8000:8000 ghcr.io/ravencloak-org/tiny:latest serve` |
+| Any | Binary | Download from [Releases](https://github.com/ravencloak-org/tiny/releases) and unpack `tr` |
 
 > Package name is always `tinyraven`; the binary is always `tr`. We never use `tb` (the Tinybird CLI) to avoid conflicts.
+
+Full per-platform instructions — including the APT key/repo setup and how to verify the GPG signature of release checksums — live in **[docs/install.md](docs/install.md)**.
 
 ## Roadmap
 
@@ -116,23 +123,62 @@ Pre-alpha — the codebase is being bootstrapped. The best way to help right now
 
 ### Install the `tr` binary
 
+**Homebrew (macOS / Linux)** — the recommended form is to tap first, then install the short name:
+
 ```bash
-# macOS / Linux — Homebrew
-brew tap ravencloak-org/tinyraven
-brew install tinyraven            # installs the `tr` binary
-
-# Debian / Ubuntu — .deb from GitHub Releases
-sudo apt install ./tinyraven_*_linux_amd64.deb
-
-# RHEL / Fedora — .rpm from GitHub Releases
-sudo rpm -i tinyraven_*_linux_amd64.rpm
-
-# Docker
-docker run -p 8000:8000 ghcr.io/ravencloak-org/tiny:latest serve
+brew tap ravencloak-org/tinyraven   # adds the ravencloak-org/homebrew-tinyraven tap
+brew install tinyraven              # installs the `tr` binary
 ```
 
-Binaries for Linux/macOS/Windows × amd64/arm64, plus `.deb` / `.rpm` packages
-and SHA256 checksums, are built by [GoReleaser](.goreleaser.yaml) on every tag.
+> **Why `brew tap` first?** The bare `brew install tinyraven` only works for formulae in
+> **homebrew-core**, which TinyRaven isn't in (yet). From our tap, the fully-qualified form is
+> `brew install ravencloak-org/tinyraven/tinyraven` — running `brew tap ravencloak-org/tinyraven`
+> once lets you use the short `brew install tinyraven` afterward. (Submitting to homebrew-core,
+> which would enable the bare command for everyone, is a future option.)
+
+**APT (Debian / Ubuntu)** — signed repo hosted on GitHub Pages:
+
+```bash
+curl -fsSL https://ravencloak-org.github.io/tiny/apt/KEY.gpg \
+  | sudo gpg --dearmor -o /usr/share/keyrings/tinyraven.gpg
+echo "deb [signed-by=/usr/share/keyrings/tinyraven.gpg] https://ravencloak-org.github.io/tiny/apt stable main" \
+  | sudo tee /etc/apt/sources.list.d/tinyraven.list
+sudo apt-get update && sudo apt-get install tinyraven
+```
+
+**DNF / YUM (RHEL / Fedora)** — signed repo:
+
+```bash
+sudo curl -fsSL https://ravencloak-org.github.io/tiny/rpm/tinyraven.repo \
+  -o /etc/yum.repos.d/tinyraven.repo
+sudo dnf install tinyraven
+```
+
+**Windows** — Scoop or WinGet:
+
+```powershell
+scoop bucket add tinyraven https://github.com/ravencloak-org/scoop-bucket
+scoop install tinyraven
+# …or…
+winget install Ravencloak.TinyRaven
+```
+
+**Arch (AUR)** · **Nix** · **Docker** · **raw binary**:
+
+```bash
+yay -S tinyraven-bin                                        # Arch User Repository
+nix profile install github:ravencloak-org/nur#tinyraven    # Nix (NUR)
+docker run -p 8000:8000 ghcr.io/ravencloak-org/tiny:latest serve
+
+# Raw binary (any OS) — pick your platform from the Releases page:
+curl -fsSL -o tinyraven.tar.gz \
+  https://github.com/ravencloak-org/tiny/releases/latest/download/tinyraven_<ver>_linux_amd64.tar.gz
+tar -xzf tinyraven.tar.gz && sudo install tr /usr/local/bin/tr
+```
+
+Binaries for Linux/macOS/Windows × amd64/arm64, plus `.deb` / `.rpm` packages and
+SHA256 checksums (GPG-signed), are built by [GoReleaser](.goreleaser.yaml) on every tag.
+Full setup, signature verification, and per-platform notes: **[docs/install.md](docs/install.md)**.
 
 ### One-click cloud deploy
 

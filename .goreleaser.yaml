@@ -113,6 +113,121 @@ brews:
     test: |
       system "#{bin}/tr", "--version"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Extra package managers. Every block below is TOLERANT: each `disable:` guard
+# resolves to true when its token/key env var is empty or absent, so a release
+# NEVER fails just because a publisher isn't set up yet. `goreleaser check`
+# passes regardless. To ACTIVATE a publisher you must do TWO things:
+#   1. Create the target repo/secret listed in each block's comment.
+#   2. Pass the matching secret as an env var in .github/workflows/goreleaser.yml
+#      (alongside HOMEBREW_TAP_GITHUB_TOKEN), e.g.
+#         SCOOP_BUCKET_GITHUB_TOKEN: ${{ secrets.SCOOP_BUCKET_GITHUB_TOKEN }}
+# Until both are done the block stays dormant (auto-disabled), not broken.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Scoop (Windows) — pushes a manifest to the bucket repo on each release.
+# Prereq: create repo ravencloak-org/scoop-bucket + secret SCOOP_BUCKET_GITHUB_TOKEN.
+# Install once active:  scoop bucket add tinyraven https://github.com/ravencloak-org/scoop-bucket
+#                       scoop install tinyraven
+scoops:
+  - name: tinyraven
+    ids:
+      - default
+    repository:
+      owner: ravencloak-org
+      name: scoop-bucket
+      branch: main
+      token: "{{ index .Env \"SCOOP_BUCKET_GITHUB_TOKEN\" }}"
+    directory: bucket
+    homepage: https://github.com/ravencloak-org/tiny
+    description: "Open-source, self-hosted, drop-in alternative to Tinybird (binary: tr)"
+    license: Apache-2.0
+    commit_author:
+      name: tinyraven-bot
+      email: oss@ravencloak.org
+    # Build the manifest always; only PUSH when the bucket token is present, so a
+    # release never fails just because the bucket/secret isn't set up yet.
+    skip_upload: '{{ if eq (index .Env "SCOOP_BUCKET_GITHUB_TOKEN") "" }}true{{ else }}false{{ end }}'
+
+# Arch User Repository (AUR) — publishes a -bin PKGBUILD via SSH.
+# Prereq: register the AUR package + secret AUR_KEY (the AUR account's SSH private key).
+# Install once active:  yay -S tinyraven-bin   (or paru -S tinyraven-bin)
+aurs:
+  - name: tinyraven-bin
+    ids:
+      - default
+    homepage: https://github.com/ravencloak-org/tiny
+    description: "Open-source, self-hosted, drop-in alternative to Tinybird (binary: tr)"
+    license: Apache-2.0
+    maintainers:
+      - "Ravencloak <oss@ravencloak.org>"
+    private_key: "{{ index .Env \"AUR_KEY\" }}"
+    git_url: "ssh://aur@aur.archlinux.org/tinyraven-bin.git"
+    provides:
+      - tinyraven
+    conflicts:
+      - tinyraven
+    package: |-
+      install -Dm755 "./tr" "${pkgdir}/usr/bin/tr"
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/tinyraven-bin/LICENSE"
+    commit_author:
+      name: tinyraven-bot
+      email: oss@ravencloak.org
+    # Dormant until AUR_KEY is wired into the release workflow.
+    disable: '{{ eq (index .Env "AUR_KEY") "" }}'
+
+# Nix — writes a default.nix to a NUR-style repo.
+# Prereq: create repo ravencloak-org/nur + secret NUR_GITHUB_TOKEN.
+# Install once active:  nix profile install github:ravencloak-org/nur#tinyraven
+nix:
+  - name: tinyraven
+    ids:
+      - default
+    repository:
+      owner: ravencloak-org
+      name: nur
+      branch: main
+      token: "{{ index .Env \"NUR_GITHUB_TOKEN\" }}"
+    path: pkgs/tinyraven/default.nix
+    homepage: https://github.com/ravencloak-org/tiny
+    description: "Open-source, self-hosted, drop-in alternative to Tinybird (binary: tr)"
+    license: asl20 # nixpkgs license attr for Apache-2.0
+    commit_author:
+      name: tinyraven-bot
+      email: oss@ravencloak.org
+    # Build always; only PUSH when NUR_GITHUB_TOKEN is present (tolerant default).
+    skip_upload: '{{ if eq (index .Env "NUR_GITHUB_TOKEN") "" }}true{{ else }}false{{ end }}'
+
+# Winget — opens a PR to microsoft/winget-pkgs from a fork.
+# Prereq: fork microsoft/winget-pkgs to ravencloak-org/winget-pkgs + secret WINGET_GITHUB_TOKEN.
+# Install once active:  winget install Ravencloak.TinyRaven
+winget:
+  - name: tinyraven
+    ids:
+      - default
+    publisher: Ravencloak
+    package_identifier: Ravencloak.TinyRaven
+    short_description: "Open-source, self-hosted, drop-in alternative to Tinybird (binary: tr)"
+    license: Apache-2.0
+    homepage: https://github.com/ravencloak-org/tiny
+    repository:
+      owner: ravencloak-org
+      name: winget-pkgs
+      branch: "tinyraven-{{ .Version }}"
+      token: "{{ index .Env \"WINGET_GITHUB_TOKEN\" }}"
+      pull_request:
+        enabled: true
+        draft: true
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+    commit_author:
+      name: tinyraven-bot
+      email: oss@ravencloak.org
+    # Build always; only open the winget PR when WINGET_GITHUB_TOKEN is present.
+    skip_upload: '{{ if eq (index .Env "WINGET_GITHUB_TOKEN") "" }}true{{ else }}false{{ end }}'
+
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 

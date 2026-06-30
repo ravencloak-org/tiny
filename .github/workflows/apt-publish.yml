@@ -1,0 +1,177 @@
+name: APT/RPM Repo Publish
+
+# Publishes a GPG-signed APT repository (and, as a bonus, a signed yum/dnf repo)
+# to the gh-pages branch on every v* tag. It runs ALONGSIDE goreleaser.yml (which
+# builds + uploads the .deb/.rpm assets to the GitHub Release) and helm-publish.yml
+# (which writes index.yaml to gh-pages root). To avoid clobbering the Helm repo we
+# publish with keep_files: true and merge into the existing branch.
+#
+# End result for users:
+#   curl -fsSL https://ravencloak-org.github.io/tiny/apt/KEY.gpg \
+#     | sudo gpg --dearmor -o /usr/share/keyrings/tinyraven.gpg
+#   echo "deb [signed-by=/usr/share/keyrings/tinyraven.gpg] \
+#     https://ravencloak-org.github.io/tiny/apt stable main" \
+#     | sudo tee /etc/apt/sources.list.d/tinyraven.list
+#   sudo apt-get update && sudo apt-get install tinyraven
+#
+# Requires repo secret GPG_PRIVATE_KEY (+ optional GPG_PASSPHRASE) — the SAME key
+# goreleaser.yml uses to sign checksums. If that secret is absent the job skips
+# cleanly (an unsigned apt repo is useless, so there is nothing to publish).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)publish, e.g. v0.1.0"
+        required: true
+
+# Serialize repo publishes so two tags can't race each other onto gh-pages.
+concurrency:
+  group: pages-apt-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write # read the release assets + push to gh-pages
+
+jobs:
+  # Gate the whole thing on the signing key existing. Secrets can't be read in a
+  # job-level `if`, so we surface the presence as an output here and depend on it.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      has_gpg: ${{ steps.flag.outputs.has }}
+    steps:
+      - id: flag
+        run: echo "has=${{ secrets.GPG_PRIVATE_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: guard
+    if: needs.guard.outputs.has_gpg == 'true'
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install repo tooling
+        run: |
+          sudo apt-get update
+          # dpkg-dev → dpkg-scanpackages; apt-utils → apt-ftparchive; createrepo-c → rpm repo.
+          sudo apt-get install -y --no-install-recommends dpkg-dev apt-utils createrepo-c
+
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      # goreleaser.yml uploads the .deb/.rpm assets to the SAME tag, concurrently.
+      # Poll the release until the Linux packages show up before we build the repo.
+      - name: Wait for release packages
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            debs=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --json assets -q '[.assets[].name | select(endswith(".deb"))] | length' 2>/dev/null || echo 0)
+            if [ "${debs:-0}" -ge 2 ]; then
+              echo "Found $debs .deb assets on $TAG."; exit 0
+            fi
+            echo "Attempt $i/30 — .deb assets not ready yet (have ${debs:-0}); sleeping 20s…"
+            sleep 20
+          done
+          echo "::error::Timed out waiting for .deb assets on release $TAG"; exit 1
+
+      - name: Download release packages
+        run: |
+          set -euo pipefail
+          mkdir -p dl
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p '*.deb' -D dl/
+          # .rpm is best-effort (powers the bonus yum/dnf repo); don't fail without it.
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p '*.rpm' -D dl/ || true
+          echo "Downloaded:"; ls -la dl/
+
+      - name: Build signed APT repository
+        env:
+          GPG_FINGERPRINT: ${{ steps.gpg.outputs.fingerprint }}
+        run: |
+          set -euo pipefail
+          # Standard dists layout: <base>/apt  suite=stable  component=main  arch=amd64,arm64
+          base=public/apt
+          mkdir -p "$base/pool/main"
+          cp dl/*.deb "$base/pool/main/"
+
+          for arch in amd64 arm64; do
+            dir="$base/dists/stable/main/binary-$arch"
+            mkdir -p "$dir"
+            # Generate Packages from the pool, filtered to this arch (paths stay
+            # relative to the apt base so Filename: resolves under /apt/pool/...).
+            ( cd "$base" && dpkg-scanpackages --arch "$arch" pool ) > "$dir/Packages"
+            gzip -9kf "$dir/Packages"
+          done
+
+          # Release file (indexes every Packages + hashes) — generated relative to base.
+          ( cd "$base" && apt-ftparchive \
+              -o APT::FTPArchive::Release::Origin="TinyRaven" \
+              -o APT::FTPArchive::Release::Label="TinyRaven" \
+              -o APT::FTPArchive::Release::Suite="stable" \
+              -o APT::FTPArchive::Release::Codename="stable" \
+              -o APT::FTPArchive::Release::Components="main" \
+              -o APT::FTPArchive::Release::Architectures="amd64 arm64" \
+              release dists/stable ) > "$base/dists/stable/Release"
+
+          # Detached + inline signatures so both `deb` and modern InRelease clients work.
+          gpg --batch --yes --local-user "$GPG_FINGERPRINT" \
+            --output "$base/dists/stable/Release.gpg" --detach-sign --armor "$base/dists/stable/Release"
+          gpg --batch --yes --local-user "$GPG_FINGERPRINT" \
+            --output "$base/dists/stable/InRelease" --clearsign "$base/dists/stable/Release"
+
+          # Public key users import via signed-by=.
+          gpg --batch --yes --armor --export "$GPG_FINGERPRINT" > "$base/KEY.gpg"
+          echo "APT repo built:"; find "$base" -type f | sort
+
+      - name: Build signed RPM repository (best-effort)
+        env:
+          GPG_FINGERPRINT: ${{ steps.gpg.outputs.fingerprint }}
+        run: |
+          set -euo pipefail
+          if ! ls dl/*.rpm >/dev/null 2>&1; then
+            echo "No .rpm assets found — skipping yum/dnf repo."; exit 0
+          fi
+          base=public/rpm
+          mkdir -p "$base"
+          cp dl/*.rpm "$base/"
+          createrepo_c "$base"
+          # Sign the repomd so dnf can verify with repo_gpgcheck=1.
+          gpg --batch --yes --local-user "$GPG_FINGERPRINT" \
+            --detach-sign --armor "$base/repodata/repomd.xml"
+          cp public/apt/KEY.gpg "$base/KEY.gpg"
+          # Drop-in .repo definition users can curl into /etc/yum.repos.d/.
+          cat > "$base/tinyraven.repo" <<'EOF'
+          [tinyraven]
+          name=TinyRaven
+          baseurl=https://ravencloak-org.github.io/tiny/rpm
+          enabled=1
+          gpgcheck=1
+          repo_gpgcheck=1
+          gpgkey=https://ravencloak-org.github.io/tiny/rpm/KEY.gpg
+          EOF
+          echo "RPM repo built:"; find "$base" -type f | sort
+
+      # keep_files: true MERGES into gh-pages without deleting the Helm index.yaml
+      # (or anything else already there). destination_dir "." merges apt/ + rpm/ at root.
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./public
+          destination_dir: .
+          keep_files: true
+          commit_message: "apt/rpm: publish ${{ env.TAG }}"
+          user_name: "github-actions[bot]"
+          user_email: "41898282+github-actions[bot]@users.noreply.github.com"

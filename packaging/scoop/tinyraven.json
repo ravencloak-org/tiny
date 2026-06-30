@@ -1,0 +1,22 @@
+{
+  "//": "Scoop manifest TEMPLATE for TinyRaven. You normally do NOT edit this by hand: the `scoops:` block in .goreleaser.yaml generates the real manifest and pushes it to the bucket repo (ravencloak-org/scoop-bucket) on each release. Users run: scoop bucket add tinyraven https://github.com/ravencloak-org/scoop-bucket ; scoop install tinyraven. VERSION/URL/HASH placeholders are filled in automatically by GoReleaser. Kept only as documentation / a manual-publish fallback.",
+  "version": "0.0.0",
+  "description": "Open-source, self-hosted, drop-in alternative to Tinybird (binary: tr)",
+  "homepage": "https://github.com/ravencloak-org/tiny",
+  "license": "Apache-2.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/ravencloak-org/tiny/releases/download/v0.0.0/tinyraven_0.0.0_windows_amd64.zip",
+      "hash": "REPLACED_BY_GORELEASER_WINDOWS_AMD64"
+    }
+  },
+  "bin": "tr.exe",
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/ravencloak-org/tiny/releases/download/v$version/tinyraven_$version_windows_amd64.zip"
+      }
+    }
+  }
+}
