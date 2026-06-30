@@ -51,6 +51,21 @@ checksum:
   name_template: "checksums.txt"
   algorithm: sha256
 
+# GPG-sign the checksums file. Active only when a key is imported in CI
+# (GPG_FINGERPRINT set by the import step); skipped on snapshots/local builds.
+signs:
+  - cmd: gpg
+    artifacts: checksum
+    signature: "${artifact}.sig"
+    args:
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
+
 # Linux system packages (.deb / .rpm) — package "tinyraven", binary "tr".
 nfpms:
   - id: tinyraven

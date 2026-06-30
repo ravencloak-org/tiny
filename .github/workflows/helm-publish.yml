@@ -1,0 +1,39 @@
+name: Helm Publish
+
+# Publishes charts/tinyraven to a GitHub-Pages Helm repo on each v* tag.
+# Uses chart-releaser: packages the chart, creates a chart GitHub Release, and
+# updates index.yaml on the gh-pages branch. Only NEW chart versions publish, so
+# bump charts/tinyraven/Chart.yaml `version` when the chart changes.
+#
+# One-time setup: enable GitHub Pages for this repo, source = gh-pages branch.
+# Then: helm repo add tinyraven https://ravencloak-org.github.io/tiny
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - uses: azure/setup-helm@v4
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.6.0
+        with:
+          charts_dir: charts
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

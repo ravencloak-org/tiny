@@ -26,15 +26,31 @@ jobs:
           go-version: "1.26"
           cache: true
 
+      # GPG signing is optional: only when GPG_PRIVATE_KEY is set do we import
+      # the key + sign checksums; otherwise the release runs with --skip=sign.
+      - name: Detect GPG secret
+        id: gpgflag
+        run: echo "has=${{ secrets.GPG_PRIVATE_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Import GPG key
+        id: gpg
+        if: steps.gpgflag.outputs.has == 'true'
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean
+          args: release --clean ${{ steps.gpgflag.outputs.has == 'true' && ' ' || '--skip=sign' }}
         env:
           # Built-in token: creates the GitHub Release and uploads artifacts.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # PAT with push access to ravencloak-org/homebrew-tinyraven.
           # Add it as a repo secret named HOMEBREW_TAP_GITHUB_TOKEN.
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          # Set by the import step; empty when no key (then --skip=sign applies).
+          GPG_FINGERPRINT: ${{ steps.gpg.outputs.fingerprint }}
