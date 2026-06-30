@@ -103,7 +103,24 @@ jobs:
           # Standard dists layout: <base>/apt  suite=stable  component=main  arch=amd64,arm64
           base=public/apt
           mkdir -p "$base/pool/main"
+          # Bring the already-published pool in so pruning works across releases:
+          # gh-pages is published with keep_files:true, so prior .debs accumulate
+          # there and must be reconciled here rather than rebuilt from scratch.
+          git fetch --no-tags --depth=1 origin gh-pages >/dev/null 2>&1 || true
+          git archive origin/gh-pages -- apt/pool 2>/dev/null | tar -x -C public || true
           cp dl/*.deb "$base/pool/main/"
+
+          # ponytail: keep-2 ceiling — retain only the 2 newest versions of each
+          # package+arch in the pool BEFORE the index regenerates, so the published
+          # Packages references only the kept .debs and the repo can't grow unbounded.
+          # Filenames are tinyraven_<ver>_<arch>.deb; version-sort per name+arch, drop the rest.
+          pool="$base/pool/main"
+          ls -1 "$pool"/*.deb 2>/dev/null | sed 's#.*/##' | awk -F_ 'NF>=3{print $1"_"$3}' | sort -u \
+            | while IFS= read -r key; do
+                name=${key%_*}; archdeb=${key#*_}
+                ls -1 "$pool/${name}_"*"_${archdeb}" 2>/dev/null | sort -V | head -n -2 \
+                  | xargs -r rm -vf -- || true
+              done || true
 
           for arch in amd64 arm64; do
             dir="$base/dists/stable/main/binary-$arch"
@@ -144,7 +161,18 @@ jobs:
           fi
           base=public/rpm
           mkdir -p "$base"
+          # Reconcile against the already-published rpms (gh-pages keep_files:true).
+          git fetch --no-tags --depth=1 origin gh-pages >/dev/null 2>&1 || true
+          git archive origin/gh-pages -- rpm 2>/dev/null | tar -x -C public --wildcards 'rpm/*.rpm' || true
           cp dl/*.rpm "$base/"
+
+          # ponytail: keep-2 ceiling for the rpm dir too (same gh-pages accretion).
+          # Group by the trailing .<arch>.rpm, version-sort, drop all but the newest 2
+          # before createrepo_c regenerates repomd so it indexes only the kept files.
+          for arch in $(ls -1 "$base"/*.rpm 2>/dev/null | sed -E 's#.*\.([^.]+)\.rpm$#\1#' | sort -u); do
+            ls -1 "$base"/*."$arch".rpm 2>/dev/null | sort -V | head -n -2 | xargs -r rm -vf -- || true
+          done
+
           createrepo_c "$base"
           # Sign the repomd so dnf can verify with repo_gpgcheck=1.
           gpg --batch --yes --local-user "$GPG_FINGERPRINT" \
