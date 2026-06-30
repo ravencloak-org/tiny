@@ -33,10 +33,10 @@ services:
     restart: unless-stopped
 
   tinyraven:
-    # Tracks :latest; pull_policy:always makes every redeploy fetch the newest
-    # image. The release workflow rebuilds :latest on each v* tag and pings the
-    # Dokploy deploy webhook -> prod updates with no version env to bump.
-    image: ghcr.io/ravencloak-org/tiny:latest
+    # Pinned to a version tag via deploy/.env (TINYRAVEN_TAG), bumped per release.
+    # Distinct tags make Dokploy recreate reliably (a same :latest tag was skipped
+    # on redeploy). pull_policy:always is belt-and-suspenders.
+    image: ghcr.io/ravencloak-org/tiny:${TINYRAVEN_TAG:-latest}
     pull_policy: always
     command: ["serve"]
     # Host port defaults to an uncommon value to dodge collisions on shared
@@ -64,7 +64,7 @@ services:
   # tiny.ravencloak.org; point the host cloudflared tunnel ingress at
   # http://localhost:18080. The API lives separately at tiny-api.ravencloak.org.
   site:
-    image: ghcr.io/ravencloak-org/tiny-site:latest
+    image: ghcr.io/ravencloak-org/tiny-site:${SITE_TAG:-latest}
     pull_policy: always
     ports:
       - "${SITE_PORT:-18080}:80"
