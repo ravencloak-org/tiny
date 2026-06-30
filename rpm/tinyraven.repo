@@ -1,0 +1,7 @@
+[tinyraven]
+name=TinyRaven
+baseurl=https://ravencloak-org.github.io/tiny/rpm
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://ravencloak-org.github.io/tiny/rpm/KEY.gpg
