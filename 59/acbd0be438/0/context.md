@@ -323,3 +323,66 @@ Same as ponytail-review:
 
 Yes
 
+### Prompt 68
+
+continue
+
+### Prompt 69
+
+do in parallel 
+
+what's pending in tinyraven?
+
+### Prompt 70
+
+I use mlx instead of ollama
+
+### Prompt 71
+
+yes do in parallel
+
+### Prompt 72
+
+don't use ollama use omlx which is installed
+
+### Prompt 73
+
+I don't think I have them
+
+### Prompt 74
+
+do the gpg + helm ops in parallel
+
+### Prompt 75
+
+install the shim launchd agent
+
+### Prompt 76
+
+verify ragcode connects via /mcp
+
+### Prompt 77
+
+enable GPG + helm pages, then ship
+
+### Prompt 78
+
+[Request interrupted by user for tool use]
+
+### Prompt 79
+
+go
+
+### Prompt 80
+
+wire (b) version-tagged images
+
+### Prompt 81
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - **Session arc:** A `grill-with-docs` design interrogation of TinyRaven concluded fully in the prior (pre-compaction) portion — all architectural decisions walked, captured as ADRs 0001–0032, with PROMPT.md/MILESTONE.md/CONTEXT.md reconciled and committed (c3221f1).
+   - **Active user request:** "f...
+
