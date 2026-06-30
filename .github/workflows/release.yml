@@ -58,16 +58,33 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      # Triggers a redeploy on your Dokploy instance. Set the repo secret
-      # DOKPLOY_DEPLOY_WEBHOOK to the application's "Deploy Webhook" URL
-      # (Dokploy app → Deployments → Webhook). No-op if the secret is unset.
-      - name: Trigger Dokploy deploy
+      # Pins the Dokploy compose env to this release's VERSION tag, then deploys.
+      # A version tag (not :latest) is a new image reference, so Dokploy always
+      # pulls the new digest — the webhook+:latest path recreated from cache and
+      # never updated. compose.update REPLACES the env blob, so we rebuild it in
+      # full (TR_ADMIN_TOKEN must be a repo secret). Skips cleanly if DOKPLOY_TOKEN
+      # is unset. Requires the Dokploy panel reachable at DOKPLOY_URL.
+      - name: Deploy to Dokploy (version-tagged)
+        env:
+          DOKPLOY_URL: https://dokploy.jobin.wtf
+          DOKPLOY_TOKEN: ${{ secrets.DOKPLOY_TOKEN }}
+          COMPOSE_ID: HHL9RZlnr5lErt91OJjwQ
+          TR_ADMIN_TOKEN: ${{ secrets.TR_ADMIN_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
-          if [ -z "${DOKPLOY_DEPLOY_WEBHOOK}" ]; then
-            echo "DOKPLOY_DEPLOY_WEBHOOK not set — skipping Dokploy deploy."
+          if [ -z "${DOKPLOY_TOKEN}" ]; then
+            echo "DOKPLOY_TOKEN not set — skipping Dokploy deploy."
             exit 0
           fi
-          echo "Triggering Dokploy deploy for ${{ github.ref_name }}..."
-          curl -fsSL -X POST "${DOKPLOY_DEPLOY_WEBHOOK}"
-        env:
-          DOKPLOY_DEPLOY_WEBHOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
+          env_blob=$(printf 'TR_ADMIN_TOKEN=%s\nTINYRAVEN_TAG=%s\nSITE_TAG=%s\n' \
+            "${TR_ADMIN_TOKEN}" "${TAG}" "${TAG}")
+          echo "Pinning Dokploy compose env to ${TAG}..."
+          jq -n --arg id "$COMPOSE_ID" --arg env "$env_blob" '{composeId:$id, env:$env}' \
+            | curl -fsS -X POST "${DOKPLOY_URL}/api/compose.update" \
+                -H "x-api-key: ${DOKPLOY_TOKEN}" -H "Content-Type: application/json" \
+                --data @- >/dev/null
+          echo "Deploying ${TAG}..."
+          curl -fsS -X POST "${DOKPLOY_URL}/api/compose.deploy" \
+            -H "x-api-key: ${DOKPLOY_TOKEN}" -H "Content-Type: application/json" \
+            --data "$(jq -n --arg id "$COMPOSE_ID" '{composeId:$id}')" >/dev/null
+          echo "Dokploy deploy triggered for ${TAG}."

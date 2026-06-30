@@ -4,6 +4,11 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] — 2026-06-30
+
+### Changed
+- Auto-deploy on release is now **version-tagged via the Dokploy API** (`compose.update` env → `compose.deploy`) instead of a webhook on `:latest`. A version tag is a new image reference, so Dokploy pulls the new digest every time; the `:latest` webhook recreated from cache and silently never updated.
+
 ## [0.3.1] — 2026-06-30
 
 ### Added
