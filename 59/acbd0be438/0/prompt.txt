@@ -994,3 +994,74 @@ added, do others in parallel
 ---
 
 yes go
+
+---
+
+go
+
+---
+
+go
+
+---
+
+yes
+
+---
+
+[Request interrupted by user]
+
+---
+
+what's pending apart from timing based email or gif?
+
+---
+
+complete parity gaps , production readiness ops indra, quality in parallel. drop readme gif
+
+---
+
+<task-notification>
+<task-id>a05e440ddc7fdc510</task-id>
+<tool-use-id>toolu_01PJEZoGzzBPxBgQMPDP3Lkz</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "auth Redis integration coverage" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Done. Summary of the work.
+
+## What I found
+The auth integration tests **already existed** in `origin/main` (`tokens_integration_test.go`, `list_integration_test.go`) and already covered most of the TokenStore lifecycle. The "20.9%" in the task is the **no-tag** `go test ./...` number; with the integration tag the package was already at **81.4%**. The genuinely uncovered Redis-backed surface was: `Ping` (0%), the `DeleteByName` not-found branch (71.4%), and Bootstrap *idempotency* (called once, never twice).
+
+## Harness pattern I matched
+- Build tag `//go:build integration` (CI runs `go test -race -tags=integration ./...`).
+- Reused the existing `testRedis(t)` helper from `tokens_integration_test.go` (same package + tag) — env var `TR_TEST_REDIS_ADDR`, default `localhost:6379`, `t.Skip` if Redis pings fail. This matches the `clickhouse` package's `TR_TEST_*`-prefixed convention; I did **not** introduce `TR_REDIS_ADDR` (that would diverge from the established test-env convention, and the default already aligns with the CI `redis:7-alpine` service on 6379).
+- stdlib `testing` only, no new deps. Unique per-run keys (`pid`+`UnixNano`) for hermeticity on shared Redis, `t.Cleanup` deletes.
+
+## Files changed
+- **Added** `/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a05e440ddc7fdc510/internal/auth/lifecycle_integration_test.go` — three tests:
+  - `TestPing` — readiness probe against live Redis (ADR 0024).
+  - `TestBootstrapIdempotent` — Bootstrap run twice, asserts single `admin`/`ADMIN` credential and `Exists(key)==1` (no key fan-out).
+  - `TestDeleteByNameUnknown` — negative path returns `(false, nil)`.
+
+Nothing outside `internal/auth/` touched. No commit, no push.
+
+## Coverage (integration tag, real `redis:7` via docker)
+| | Before | After |
+|---|---|---|
+| Package total | 81.4% | **86.0%** |
+| `Ping` | 0% | 100% |
+| `DeleteByName` | 71.4% | 85.7% |
+
+(No-tag `go test ./...` baseline is unchanged by design — these are integration-tagged so the default build stays green without Redis.)
+
+## Verification (all passing)
+- `gofmt -l` clean; `go vet -tags=integration ./internal/auth/...` ok.
+- `go test ./...` (no tag) — **ALL PASS**, stays green without Redis.
+- `go test -tags=integration ./internal/auth/...` — **ok**, all three new tests PASS against a real `redis:7`.
+- Skip-path proven: pointing `TR_TEST_REDIS_ADDR=localhost:6399` (dead) → all three `--- SKIP`, package still `ok`.
+
+I left the remaining uncovered branches alone deliberately: `Validate`/`Put` error paths and the `List` mid-scan `Get`-error `continue` require a deliberately-broken Redis client and would be fragile, low-value tests — out of scope for "smallest correct change."</result>
+<usage><subagent_tokens>164256</subagent_tokens><tool_uses>15</tool_uses><duration_ms>209615</duration_ms></usage>
+<worktree><worktreePath>/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a05e440ddc7fdc510</worktreePath><worktreeBranch>worktree-agent-a05e440ddc7fdc510</worktreeBranch></worktree>
+</task-notification>
