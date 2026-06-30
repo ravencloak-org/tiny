@@ -18,11 +18,12 @@ import (
 // http.Handler / middleware / func fields are optional (nil-checked) so the
 // server degrades gracefully if a piece isn't wired.
 type Deps struct {
-	Ingester  model.Ingester   // POST /v0/events
-	Pipes     model.PipeRunner // GET  /v0/pipes/{name}.json
-	Tokens    model.TokenStore // auth middleware
-	RedisPing model.Pinger     // readiness
-	CHPing    model.Pinger     // readiness
+	Ingester    model.Ingester           // POST /v0/events
+	Pipes       model.PipeRunner         // GET  /v0/pipes/{name}.json
+	Datasources model.DatasourceRegistry // GET  /v0/datasources (optional)
+	Tokens      model.TokenStore         // auth middleware
+	RedisPing   model.Pinger             // readiness
+	CHPing      model.Pinger             // readiness
 
 	// Phase 2 add-ons (optional).
 	SQLProxy          http.Handler                      // GET/POST /v0/sql (ADR 0011)
@@ -82,6 +83,10 @@ func New(deps Deps) http.Handler {
 		if deps.SQLProxy != nil {
 			// Raw SQL is powerful -> ADMIN only (ADR 0011 + 0005).
 			r.With(s.adminOnly).Handle("/sql", deps.SQLProxy) // GET + POST
+		}
+		if deps.Datasources != nil {
+			// Listing every datasource schema is privileged -> ADMIN only.
+			r.With(s.adminOnly).Get("/datasources", s.handleListDatasources)
 		}
 		if deps.OpenAPI != nil {
 			r.Get("/openapi.json", s.handleOpenAPI)
