@@ -1065,3 +1065,85 @@ I left the remaining uncovered branches alone deliberately: `Validate`/`Put` err
 <usage><subagent_tokens>164256</subagent_tokens><tool_uses>15</tool_uses><duration_ms>209615</duration_ms></usage>
 <worktree><worktreePath>/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a05e440ddc7fdc510</worktreePath><worktreeBranch>worktree-agent-a05e440ddc7fdc510</worktreeBranch></worktree>
 </task-notification>
+
+---
+
+check
+
+---
+
+<task-notification>
+<task-id>aa0cdbe9e93d73c66</task-id>
+<tool-use-id>toolu_01E4F3aZJ7SoykE7FABe66YK</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Ops hygiene + replication ADR" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>All three tasks complete, validated, nothing committed or pushed. Everything is confined to my ownership (`.github/workflows/*`, `docs/*`).
+
+## Task 1 — Node 20 → Node 24 action bumps
+
+| File | Action | Bump |
+|---|---|---|
+| `ci.yml` | `actions/checkout` | v4 → **v5** (×3) |
+| `ci.yml` | `actions/setup-go` | v5 → **v6** (×3) |
+| `ci.yml` | `codecov/codecov-action` | v4 → **v6** |
+| `release.yml` | `actions/checkout` | v4 → **v5** |
+| `release.yml` | `docker/setup-buildx-action` | v3 → **v4** |
+| `release.yml` | `docker/login-action` | v3 → **v4** |
+| `release.yml` | `docker/build-push-action` | v6 → **v7** (×2) |
+| `goreleaser.yml` | `actions/checkout` | v4 → **v5** |
+| `goreleaser.yml` | `actions/setup-go` | v5 → **v6** |
+| `goreleaser.yml` | `crazy-max/ghaction-import-gpg` | v6 → **v7** |
+| `goreleaser.yml` | `goreleaser/goreleaser-action` | v6 → **v7** |
+| `helm-publish.yml` | `actions/checkout` | v4 → **v5** |
+| `apt-publish.yml` | `actions/checkout` | v4 → **v5** |
+| `apt-publish.yml` | `crazy-max/ghaction-import-gpg` | v6 → **v7** |
+
+**Research-driven calls worth flagging:**
+- **`codecov/codecov-action` → v6, not v5.** v5 is *still Node 20*; v6 is the first Node 24 release. The existing `files:` / `fail_ci_if_error:` inputs and `CODECOV_TOKEN` env are all still valid in v6 — no input change needed.
+- **`actions/checkout` → v5, deliberately not v6/v7.** v5 is the first Node-24 major and is input-clean; checkout v6 introduced a credentials-on-disk behavior change, so v5 is the safer minimal bump.
+- **Left `azure/setup-helm@v4` alone** — its floating `v4` tag tip already runs Node 24 (PR #259), so there's no warning to resolve; jumping to v5 risks a Helm-4 default change in chart publishing.
+- **Left `helm/chart-releaser-action@v1.6.0` alone** — it's a Docker action, not a Node action, so it never emits the Node 20 warning.
+
+**Input-breaking-change adjustments:** none required. The only behavior shift is `actions/setup-go@v6` defaulting its cache-key file from `go.sum` to `go.mod` — harmless here since both files exist in a Go module and we use bare `cache: true`. All other bumped actions kept identical inputs.
+
+## Task 2 — Dead `DOKPLOY_DEPLOY_WEBHOOK` removed
+- `docs/deploy/dokploy.md` §4 rewritten from the obsolete webhook flow to the actual version-tagged Dokploy API flow (`compose.update` pins `TINYRAVEN_TAG`/`SITE_TAG`, then `compose.deploy`); one-time setup is now the two real secrets `DOKPLOY_TOKEN` + `TR_ADMIN_TOKEN`. §2 Option A's stale "tracks `:latest`, don't pin a version env" note corrected to match the prod compose (`${TINYRAVEN_TAG:-latest}`).
+- `.github/workflows/goreleaser.yml` header comment "Dokploy webhook" → "version-tagged Dokploy deploy".
+- Grep confirms zero residual `DOKPLOY_DEPLOY_WEBHOOK` references repo-wide.
+
+## Task 3 — Replication/HA roadmap ADR
+- **`/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-aa0cdbe9e93d73c66/docs/adr/0033-single-node-and-replication-roadmap.md`** (next number after 0032; complements 0031's `tr`-process scope boundary with the data-tier roadmap).
+- **Recommendation (one line):** keep `tr` stateless-ish behind a bring-your-own ClickHouse cluster and make `tr deploy` + ENGINE generation cluster-aware (emit `ReplicatedMergeTree` `ON CLUSTER`) rather than building clustering into `tr` — sharding and `tr`-process HA deferred as demand-driven.
+- It surveys all three OSS-ClickHouse paths (ReplicatedMergeTree+Keeper / Distributed+sharding / BYO cluster), lists the tr-side work each implies (registry coordination, `ON CLUSTER` deploy + migrations, connection routing), and tracks the two USER-blocked items (Scoop/AUR/Nix/winget needing user-created registries+secrets; Cloudflare bot-fight 403s needing a WAF/UA allowlist).
+
+## Confirmation
+All five workflow YAML files parse cleanly under `python3 -c "import yaml; yaml.safe_load(...)"` after edits. Nothing committed or pushed; working tree shows 6 modified files + 1 new ADR, all within `.github/workflows/` and `docs/`.
+
+One note for your awareness (no action taken — outside this task's scope): the new `release.yml` deploy job hardcodes `DOKPLOY_URL: https://dokploy.jobin.wtf` and `COMPOSE_ID`, which I documented as "baked into the workflow." If you ever want those externalized, that's a `release.yml` change for a future pass.</result>
+<usage><subagent_tokens>208665</subagent_tokens><tool_uses>34</tool_uses><duration_ms>523899</duration_ms></usage>
+<worktree><worktreePath>/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-aa0cdbe9e93d73c66</worktreePath><worktreeBranch>worktree-agent-aa0cdbe9e93d73c66</worktreeBranch></worktree>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a24177ce6747e536e</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Parity: copy pipes, scoped lists, parquet" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Builds clean. Now run the existing tests to see which assertions need updating.</result>
+<usage><subagent_tokens>278248</subagent_tokens><tool_uses>67</tool_uses><duration_ms>710240</duration_ms></usage>
+<worktree><worktreePath>/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a24177ce6747e536e</worktreePath><worktreeBranch>worktree-agent-a24177ce6747e536e</worktreeBranch></worktree>
+</task-notification>
+
+---
+
+wait for it to finish
+
+---
+
+harvest it
