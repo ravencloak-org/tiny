@@ -4,6 +4,18 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-06-30
+
+### Added
+- Control-flow pipe templating: `{% if/elif/else/end %}` + `defined()` via expr-lang (ADR 0003).
+- Resource-token materialization: `TOKEN "x" READ/APPEND` in files → scoped tokens on `tr deploy` (ADR 0030).
+- `tr deploy --check` (dry run), `tr login`, `tr status`.
+- Per-pipe `RATE_LIMIT` enforcement (token+pipe; ADR 0015); `/tr/v1/docs` UI (off by default, `TR_DOCS_ENABLED`; ADR 0017); dedicated read-only ClickHouse user (ADR 0011).
+- Release signing (GPG) + Helm chart published to GitHub Pages.
+
+### Changed
+- ponytail cuts: strconv.Itoa over hand-rolled, merged CHPinger into Pinger, dropped dead Connector field.
+
 ## [0.2.0] — 2026-06-29
 
 Phases 3–5 + scoped auth + a query-path perf fix.
@@ -94,6 +106,7 @@ publishing + deployment). Single `tr` binary = server + CLI.
 - `/v0/sql` uses the `readonly=2` setting; a dedicated read-only CH user is the
   production upgrade.
 
+[0.3.0]: https://github.com/ravencloak-org/tiny/releases/tag/v0.3.0
 [0.2.0]: https://github.com/ravencloak-org/tiny/releases/tag/v0.2.0
 [0.1.2]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ravencloak-org/tiny/releases/tag/v0.1.1
