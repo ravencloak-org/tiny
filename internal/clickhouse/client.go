@@ -41,6 +41,8 @@ type Config struct {
 	ROPassword string
 }
 
+var _ model.CHWriter = (*Client)(nil)
+
 // Client talks to one ClickHouse instance/database over both transports.
 type Client struct {
 	httpURL  string
@@ -141,6 +143,16 @@ func (c *Client) Query(ctx context.Context, sql string, params, settings map[str
 // keeping (ADR 0011).
 func (c *Client) exec(ctx context.Context, sql string) error {
 	_, err := c.httpQuery(ctx, sql, nil, nil, c.user, c.password)
+	return err
+}
+
+// InsertSelect runs an INSERT INTO ... SELECT over HTTP as the read-write user,
+// binding CH query parameters (param_<name>) — the copy-pipe write path
+// (model.CHWriter). It is exec with params: the read-only identity (readonly=2;
+// ADR 0011) would refuse the write, so this always authenticates as user/password.
+// The body is discarded (an INSERT returns none worth keeping).
+func (c *Client) InsertSelect(ctx context.Context, sql string, params map[string]string) error {
+	_, err := c.httpQuery(ctx, sql, params, nil, c.user, c.password)
 	return err
 }
 

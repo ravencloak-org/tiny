@@ -192,16 +192,20 @@ func TestGetPipe(t *testing.T) {
 	}
 }
 
-// TestPipeMetaAuth: metadata routes are ADMIN-gated like /v0/datasources.
+// TestPipeMetaAuth: metadata routes are scope-filtered (Tinybird parity), not
+// wholesale ADMIN-gated. The list narrows to READ-able pipes (never 403s an
+// authenticated token); a single GET requires READ for that pipe (403 if not),
+// and an unauthenticated request is 401. "rd" holds READ:user_metrics.
 func TestPipeMetaAuth(t *testing.T) {
 	h := newPipeServer(fakePipeReg{m: map[string]*model.Pipe{"user_metrics": samplePipe()}})
 	cases := []struct {
 		name, token, path string
 		want              int
 	}{
-		{"list non-admin", "rd", "/v0/pipes", http.StatusForbidden},
+		{"list scoped token ok (narrowed)", "rd", "/v0/pipes", http.StatusOK},
 		{"list no token", "", "/v0/pipes", http.StatusUnauthorized},
-		{"get non-admin", "rd", "/v0/pipes/user_metrics", http.StatusForbidden},
+		{"get readable pipe ok", "rd", "/v0/pipes/user_metrics", http.StatusOK},
+		{"get unreadable pipe 403", "rd", "/v0/pipes/other", http.StatusForbidden},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -215,6 +219,42 @@ func TestPipeMetaAuth(t *testing.T) {
 				t.Fatalf("%s = %d, want %d (body %s)", c.path, rec.Code, c.want, rec.Body.String())
 			}
 		})
+	}
+}
+
+// TestListPipesScopeFilter verifies the per-token subset: a READ:user_metrics
+// token sees only user_metrics, not other_pipe; ADMIN sees both.
+func TestListPipesScopeFilter(t *testing.T) {
+	other := &model.Pipe{
+		Name:     "other_pipe",
+		Endpoint: &model.Endpoint{Name: "other_pipe", SQL: "SELECT 1"},
+	}
+	h := newPipeServer(fakePipeReg{m: map[string]*model.Pipe{
+		"user_metrics": samplePipe(),
+		"other_pipe":   other,
+	}})
+
+	get := func(token string) pipeListResp {
+		req := httptest.NewRequest(http.MethodGet, "/v0/pipes", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("[%s] status = %d, want 200 (body %s)", token, rec.Code, rec.Body.String())
+		}
+		var got pipeListResp
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("[%s] decode: %v", token, err)
+		}
+		return got
+	}
+
+	if got := get("adm"); len(got.Pipes) != 2 {
+		t.Fatalf("admin sees %d pipes, want 2", len(got.Pipes))
+	}
+	rd := get("rd")
+	if len(rd.Pipes) != 1 || rd.Pipes[0].Name != "user_metrics" {
+		t.Fatalf("READ:user_metrics token sees %d pipes, want [user_metrics]", len(rd.Pipes))
 	}
 }
 

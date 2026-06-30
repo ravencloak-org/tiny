@@ -2,6 +2,7 @@ package pipe
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -10,6 +11,21 @@ import (
 
 	"github.com/tinyraven/tinyraven/internal/model"
 )
+
+// fakeWriter records the INSERT it was asked to run (model.CHWriter) for the
+// copy-pipe path; no real ClickHouse.
+type fakeWriter struct {
+	calls     int
+	gotSQL    string
+	gotParams map[string]string
+	err       error
+}
+
+func (w *fakeWriter) InsertSelect(_ context.Context, sql string, params map[string]string) error {
+	w.calls++
+	w.gotSQL, w.gotParams = sql, params
+	return w.err
+}
 
 // fakeCH records the SQL/params/settings it was asked to run and returns canned
 // results — no real ClickHouse (model.CHQuerier).
@@ -120,6 +136,7 @@ func TestRunFormat_AppendsClickHouseFormat(t *testing.T) {
 		{model.FormatJSON, "FORMAT JSON"},
 		{model.FormatCSV, "FORMAT CSVWithNames"},
 		{model.FormatNDJSON, "FORMAT JSONEachRow"},
+		{model.FormatParquet, "FORMAT Parquet"},
 	}
 	for _, c := range cases {
 		t.Run(string(c.format), func(t *testing.T) {
@@ -136,6 +153,94 @@ func TestRunFormat_AppendsClickHouseFormat(t *testing.T) {
 				t.Errorf("bound params = %+v, want param_x=v", ch.gotParams)
 			}
 		})
+	}
+}
+
+// --- Gap 9: copy pipes (RunCopy) ---
+
+// TestRunCopy_InsertsSelectIntoTarget verifies the on-demand copy path: it
+// composes the copy SQL (upstream node as a CTE), binds request params, prefixes
+// INSERT INTO <target>, runs it over the write path, and returns a terminal job.
+func TestRunCopy_InsertsSelectIntoTarget(t *testing.T) {
+	raw := `NODE filtered
+SQL >
+    SELECT * FROM events WHERE t = {{String(kind)}}
+
+NODE cp
+SQL >
+    SELECT * FROM filtered
+TYPE copy
+TARGET_DATASOURCE archive`
+
+	w := &fakeWriter{}
+	e := newExec(&fakeCH{body: []byte("{}")}, mustParse(t, "arch", raw)).EnableCopy(w)
+
+	body, status, err := e.RunCopy(context.Background(), "arch", url.Values{"kind": {"click"}})
+	if err != nil || status != http.StatusOK {
+		t.Fatalf("RunCopy: status=%d err=%v", status, err)
+	}
+	if w.calls != 1 {
+		t.Fatalf("writer calls = %d, want 1", w.calls)
+	}
+	if !strings.HasPrefix(w.gotSQL, "INSERT INTO `archive` ") {
+		t.Errorf("SQL must start with INSERT INTO `archive`:\n%s", w.gotSQL)
+	}
+	if !strings.Contains(w.gotSQL, "WITH filtered AS (") || !strings.Contains(w.gotSQL, "{kind:String}") {
+		t.Errorf("composed CTE / bound placeholder missing:\n%s", w.gotSQL)
+	}
+	if strings.Contains(w.gotSQL, "FORMAT ") {
+		t.Errorf("a copy INSERT must not carry a FORMAT clause:\n%s", w.gotSQL)
+	}
+	if w.gotParams["param_kind"] != "click" {
+		t.Errorf("bound params = %+v, want param_kind=click", w.gotParams)
+	}
+	var job map[string]any
+	if err := json.Unmarshal(body, &job); err != nil {
+		t.Fatalf("decode job body: %v (%s)", err, body)
+	}
+	if job["status"] != "done" || job["pipe_name"] != "arch" {
+		t.Errorf("job = %v, want status=done pipe_name=arch", job)
+	}
+}
+
+func TestRunCopy_NotACopyPipe(t *testing.T) {
+	raw := "NODE e\nSQL >\n    SELECT 1\nTYPE endpoint"
+	e := newExec(&fakeCH{}, mustParse(t, "p", raw)).EnableCopy(&fakeWriter{})
+	_, status, err := e.RunCopy(context.Background(), "p", url.Values{})
+	if status != http.StatusBadRequest || err == nil {
+		t.Errorf("status=%d err=%v, want 400 for a non-copy pipe", status, err)
+	}
+}
+
+func TestRunCopy_WriterErrorMapsTo400(t *testing.T) {
+	raw := "NODE c\nSQL >\n    SELECT 1\nTYPE copy\nTARGET_DATASOURCE t"
+	w := &fakeWriter{err: errors.New("clickhouse 400")}
+	e := newExec(&fakeCH{}, mustParse(t, "p", raw)).EnableCopy(w)
+	_, status, err := e.RunCopy(context.Background(), "p", url.Values{})
+	if status != http.StatusBadRequest || err == nil {
+		t.Errorf("status=%d err=%v, want 400 on CH write error", status, err)
+	}
+}
+
+func TestRunCopy_WriterNotEnabledIs500(t *testing.T) {
+	raw := "NODE c\nSQL >\n    SELECT 1\nTYPE copy\nTARGET_DATASOURCE t"
+	e := newExec(&fakeCH{}, mustParse(t, "p", raw)) // EnableCopy intentionally not called
+	_, status, err := e.RunCopy(context.Background(), "p", url.Values{})
+	if status != http.StatusInternalServerError || err == nil {
+		t.Errorf("status=%d err=%v, want 500 when copy not enabled", status, err)
+	}
+}
+
+func TestRunCopy_MissingRequiredParam(t *testing.T) {
+	raw := "NODE c\nSQL >\n    SELECT {{String(x)}}\nTYPE copy\nTARGET_DATASOURCE t"
+	w := &fakeWriter{}
+	e := newExec(&fakeCH{}, mustParse(t, "p", raw)).EnableCopy(w)
+	_, status, err := e.RunCopy(context.Background(), "p", url.Values{})
+	if status != http.StatusBadRequest || err == nil {
+		t.Errorf("status=%d err=%v, want 400 for a missing required param", status, err)
+	}
+	if w.calls != 0 {
+		t.Errorf("writer must not run on a missing param (calls=%d)", w.calls)
 	}
 }
 

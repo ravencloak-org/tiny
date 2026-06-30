@@ -41,8 +41,10 @@ func newDSServer(reg model.DatasourceRegistry) http.Handler {
 	})
 }
 
-// TestListDatasourcesAuth covers the ADMIN gate (ADR 0005): admin sees the list,
-// a non-admin token is 403, no token is 401.
+// TestListDatasourcesAuth covers auth on the scope-filtered list (Tinybird
+// parity): admin and any authenticated token get 200 (the list is narrowed by
+// READ scope, never 403'd); no token is still 401. The "rd" token holds only
+// READ:user_metrics (a pipe scope), so against an empty registry it sees [].
 func TestListDatasourcesAuth(t *testing.T) {
 	h := newDSServer(fakeDSReg{})
 	cases := []struct {
@@ -50,7 +52,7 @@ func TestListDatasourcesAuth(t *testing.T) {
 		want        int
 	}{
 		{"admin ok", "adm", http.StatusOK},
-		{"non-admin denied", "rd", http.StatusForbidden},
+		{"non-admin filtered (200, narrowed)", "rd", http.StatusOK},
 		{"no token", "", http.StatusUnauthorized},
 	}
 	for _, c := range cases {
@@ -66,6 +68,55 @@ func TestListDatasourcesAuth(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestListDatasourcesScopeFilter verifies the per-token subset: a token with
+// READ:events sees only events, not orders; ADMIN sees both.
+func TestListDatasourcesScopeFilter(t *testing.T) {
+	reg := fakeDSReg{list: []*model.Datasource{
+		{Name: "events", Engine: "MergeTree"},
+		{Name: "orders", Engine: "MergeTree"},
+	}}
+	h := New(Deps{
+		Tokens: fakeTokens{m: map[string]*model.Token{
+			"adm":   {Name: "adm", Value: "adm", Scopes: []string{"ADMIN"}},
+			"rd_ev": {Name: "rd_ev", Value: "rd_ev", Scopes: []string{"READ:events"}},
+		}},
+		RedisPing:   okPinger{},
+		CHPing:      okPinger{},
+		Datasources: reg,
+	})
+
+	get := func(token string) dsListResp {
+		req := httptest.NewRequest(http.MethodGet, "/v0/datasources", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("[%s] status = %d, want 200 (body %s)", token, rec.Code, rec.Body.String())
+		}
+		var got dsListResp
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("[%s] decode: %v", token, err)
+		}
+		return got
+	}
+
+	if names := dsNames(get("adm")); len(names) != 2 {
+		t.Fatalf("admin sees %v, want both events+orders", names)
+	}
+	rd := dsNames(get("rd_ev"))
+	if len(rd) != 1 || rd[0] != "events" {
+		t.Fatalf("READ:events token sees %v, want [events] only", rd)
+	}
+}
+
+func dsNames(r dsListResp) []string {
+	out := make([]string, len(r.Datasources))
+	for i, d := range r.Datasources {
+		out[i] = d.Name
+	}
+	return out
 }
 
 // TestListDatasourcesBody verifies the Tinybird envelope and field mapping:

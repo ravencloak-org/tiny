@@ -2,6 +2,7 @@ package pipe
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,19 +20,32 @@ import (
 // never string-interpolated, so endpoints are injection-proof (ADR 0003). Each
 // run emits a best-effort observability stat to a StatsRecorder (ADR 0014).
 type Executor struct {
-	ch    model.CHQuerier
-	pipes model.PipeRegistry
-	ds    model.DatasourceRegistry // reserved for future referential checks; unused in MVP Run
-	rec   model.StatsRecorder      // may be nil — observability is optional and never blocks
+	ch     model.CHQuerier
+	pipes  model.PipeRegistry
+	ds     model.DatasourceRegistry // reserved for future referential checks; unused in MVP Run
+	rec    model.StatsRecorder      // may be nil — observability is optional and never blocks
+	writer model.CHWriter           // write path for copy pipes; nil -> RunCopy is unavailable
 }
 
 // NewExecutor wires the runner to its ClickHouse querier, registries, and the
-// stats recorder (rec may be nil; ADR 0014 — observability is best-effort).
+// stats recorder (rec may be nil; ADR 0014 — observability is best-effort). The
+// copy write path is off by default; call EnableCopy to wire it.
 func NewExecutor(ch model.CHQuerier, pipes model.PipeRegistry, ds model.DatasourceRegistry, rec model.StatsRecorder) *Executor {
 	return &Executor{ch: ch, pipes: pipes, ds: ds, rec: rec}
 }
 
-var _ model.PipeRunner = (*Executor)(nil)
+// EnableCopy wires the read-write path RunCopy needs (INSERT INTO ... SELECT for
+// copy pipes). Kept off the constructor so existing query-only callers are
+// unaffected. Returns e for chaining.
+func (e *Executor) EnableCopy(w model.CHWriter) *Executor {
+	e.writer = w
+	return e
+}
+
+var (
+	_ model.PipeRunner = (*Executor)(nil)
+	_ model.CopyRunner = (*Executor)(nil)
+)
 
 // uuidRe validates the canonical 8-4-4-4-12 hex UUID form for UUID params.
 var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -75,46 +89,12 @@ func (e *Executor) RunFormat(ctx context.Context, name string, params url.Values
 		})
 	}()
 
-	sql := composeSQL(p)
-
-	// Resolve control flow ({% if/elif/else/end %}) FIRST, before any value-param
-	// substitution (ADR 0003). Non-taken branches — and the {{Type(name)}}
-	// placeholders inside them — are dropped here, so they are never bound and a
-	// param referenced only in a false branch does not count as required below.
-	sql, err = resolveControlFlow(sql, params, p.Endpoint.Params)
+	// Compose the published SQL (upstream nodes as CTEs) and bind the request
+	// params: control flow resolves first, then {{Type(name)}} -> {name:Type} with
+	// values bound as CH params, never interpolated (ADR 0003). Shared with RunCopy.
+	sql, chParams, status, err := bindQuery(composeSQL(p), p.Endpoint.Params, params)
 	if err != nil {
-		return nil, http.StatusBadRequest, err
-	}
-	// required = the params that survived control flow; only these are bound/required.
-	required := paramNamesInSQL(sql)
-
-	// Rewrite {{Type(name, default)}} -> {name:Type}, mapping the template type to
-	// its ClickHouse parameter type. Defaults bind in the param map below, not in
-	// the SQL text — values are never interpolated (ADR 0003).
-	sql = placeholderRe.ReplaceAllStringFunc(sql, func(match string) string {
-		m := placeholderRe.FindStringSubmatch(match)
-		return "{" + m[2] + ":" + chParamType(model.ParamType(m[1])) + "}"
-	})
-
-	chParams := make(map[string]string, len(p.Endpoint.Params))
-	for _, param := range p.Endpoint.Params {
-		if !required[param.Name] {
-			continue // referenced only inside a non-taken branch (or not at all): skip
-		}
-		var raw string
-		switch {
-		case params.Has(param.Name):
-			raw = params.Get(param.Name)
-		case param.HasDefault:
-			raw = param.Default
-		default:
-			return nil, http.StatusBadRequest, fmt.Errorf("missing required parameter: %s", param.Name)
-		}
-		norm, verr := normalizeParam(param.Type, param.Name, raw)
-		if verr != nil {
-			return nil, http.StatusBadRequest, verr
-		}
-		chParams["param_"+param.Name] = norm
+		return nil, status, err
 	}
 
 	settings := map[string]string{}
@@ -144,14 +124,169 @@ func (e *Executor) RunFormat(ctx context.Context, name string, params url.Values
 	return body, http.StatusOK, nil
 }
 
+// RunCopy triggers a TYPE copy pipe on demand: it composes the copy SQL, binds
+// request params (identical pipeline to a query), and runs
+// INSERT INTO <target> SELECT ... over the read-write path. Tinybird models this
+// as an async job; TinyRaven runs it synchronously and returns a job-shaped body
+// with a terminal status so existing copy clients parse the response unchanged.
+//
+// ponytail: synchronous execution + no /v0/jobs surface (gap #8 deferred). The
+// returned job is already "done" (or surfaced as a 400 CH error), so there is
+// nothing to poll; job_url is emitted for shape parity but points at the
+// unimplemented jobs route.
+func (e *Executor) RunCopy(ctx context.Context, name string, params url.Values) (body []byte, status int, err error) {
+	p, ok := e.pipes.Get(name)
+	if !ok {
+		return nil, http.StatusNotFound, fmt.Errorf("pipe not found: %s", name)
+	}
+	if p.Copy == nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("pipe %q is not a copy pipe", name)
+	}
+	if e.writer == nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("copy not enabled: no write path configured")
+	}
+
+	sql, chParams, status, err := bindQuery(composeWith(p.Nodes, p.Copy.SQL), p.Copy.Params, params)
+	if err != nil {
+		return nil, status, err
+	}
+	// Strip a trailing ; so the SELECT slots cleanly after INSERT INTO <target>.
+	sql = strings.TrimRight(strings.TrimSpace(sql), ";")
+	insert := "INSERT INTO " + chIdent(p.Copy.TargetDatasource) + " " + sql
+
+	start := time.Now()
+	cerr := e.writer.InsertSelect(ctx, insert, chParams)
+	durMS := float64(time.Since(start).Microseconds()) / 1000.0
+	if e.rec != nil { // best-effort observability (ADR 0014), non-blocking
+		st := http.StatusOK
+		if cerr != nil {
+			st = http.StatusBadRequest
+		}
+		e.rec.Record(model.QueryStat{Pipe: name, DurationMS: durMS, StatusCode: st, Error: errString(cerr)})
+	}
+	if cerr != nil {
+		// ADR 0012: surface the CH error so the API maps it (matches the query path).
+		return nil, http.StatusBadRequest, cerr
+	}
+	return copyJobBody(name, p.Copy.TargetDatasource), http.StatusOK, nil
+}
+
+// bindQuery composes the per-request CH query from a terminal SQL string and the
+// pipe's declared params: resolve control flow, rewrite {{Type(name)}} ->
+// {name:Type}, then bind/validate each surviving param as a CH parameter (never
+// interpolated; ADR 0003). Shared by the query (RunFormat) and copy (RunCopy)
+// paths. On a client error it returns status 400 and the reason; otherwise 200.
+func bindQuery(sql string, declared []model.Param, params url.Values) (string, map[string]string, int, error) {
+	// Control flow first (ADR 0003): non-taken branches and the placeholders inside
+	// them are dropped here, so a param used only in a false branch is not required.
+	resolved, err := resolveControlFlow(sql, params, declared)
+	if err != nil {
+		return "", nil, http.StatusBadRequest, err
+	}
+	required := paramNamesInSQL(resolved)
+
+	resolved = placeholderRe.ReplaceAllStringFunc(resolved, func(match string) string {
+		m := placeholderRe.FindStringSubmatch(match)
+		return "{" + m[2] + ":" + chParamType(model.ParamType(m[1])) + "}"
+	})
+
+	chParams := make(map[string]string, len(declared))
+	for _, param := range declared {
+		if !required[param.Name] {
+			continue // referenced only inside a non-taken branch (or not at all): skip
+		}
+		var raw string
+		switch {
+		case params.Has(param.Name):
+			raw = params.Get(param.Name)
+		case param.HasDefault:
+			raw = param.Default
+		default:
+			return "", nil, http.StatusBadRequest, fmt.Errorf("missing required parameter: %s", param.Name)
+		}
+		norm, verr := normalizeParam(param.Type, param.Name, raw)
+		if verr != nil {
+			return "", nil, http.StatusBadRequest, verr
+		}
+		chParams["param_"+param.Name] = norm
+	}
+	return resolved, chParams, http.StatusOK, nil
+}
+
+// chIdent backtick-quotes a ClickHouse identifier, doubling embedded backticks.
+// The copy target comes from a git-tracked .pipe file (TARGET_DATASOURCE), not
+// request input, but quoting keeps the INSERT well-formed for names with '-' etc.
+func chIdent(s string) string {
+	return "`" + strings.ReplaceAll(s, "`", "``") + "`"
+}
+
+// copyJob / copyJobResp are the Tinybird-shaped copy-trigger response. The job
+// has already run synchronously, so Status is terminal ("done").
+type copyJobResp struct {
+	ID       string  `json:"id"`
+	JobID    string  `json:"job_id"`
+	JobURL   string  `json:"job_url"`
+	Status   string  `json:"status"`
+	PipeName string  `json:"pipe_name"`
+	Job      copyJob `json:"job"`
+}
+
+type copyJob struct {
+	ID         string       `json:"id"`
+	Kind       string       `json:"kind"`
+	Status     string       `json:"status"`
+	PipeName   string       `json:"pipe_name"`
+	Datasource copyJobDSRef `json:"datasource"`
+}
+
+type copyJobDSRef struct {
+	Name string `json:"name"`
+}
+
+// copyJobBody builds the JSON body for a completed on-demand copy.
+func copyJobBody(pipe, target string) []byte {
+	id := newJobID()
+	resp := copyJobResp{
+		ID:       id,
+		JobID:    id,
+		JobURL:   "/v0/jobs/" + id, // ponytail: jobs surface is deferred (gap #8)
+		Status:   "done",
+		PipeName: pipe,
+		Job: copyJob{
+			ID:         id,
+			Kind:       "copy",
+			Status:     "done",
+			PipeName:   pipe,
+			Datasource: copyJobDSRef{Name: target},
+		},
+	}
+	b, _ := json.Marshal(resp)
+	return b
+}
+
+// newJobID returns a random UUID v4 string for a synthesized copy job.
+func newJobID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// Vanishingly unlikely; fall back to a time-based id rather than failing the
+		// copy over an rng hiccup.
+		return fmt.Sprintf("job_%d", time.Now().UnixNano())
+	}
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // variant 10
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
+
 // chFormat maps an output format to the ClickHouse FORMAT clause. Unknown
-// formats fall back to JSON (the handler only routes the three known suffixes).
+// formats fall back to JSON (the handler only routes the known suffixes).
 func chFormat(f model.OutputFormat) string {
 	switch f {
 	case model.FormatCSV:
 		return "CSVWithNames" // header row, matching Tinybird's .csv
 	case model.FormatNDJSON:
 		return "JSONEachRow" // newline-delimited JSON objects
+	case model.FormatParquet:
+		return "Parquet" // binary columnar, matching Tinybird's .parquet
 	default:
 		return "JSON"
 	}
@@ -245,13 +380,19 @@ func parseStats(body []byte) (readRows, readBytes int64) {
 // endpoint already FROMs the node names, and that file order is a valid
 // dependency order. Sufficient for MVP single/linear pipes.
 func composeSQL(p *model.Pipe) string {
-	endpointSQL := strings.TrimSpace(p.Endpoint.SQL)
-	if len(p.Nodes) == 0 {
-		return endpointSQL
+	return composeWith(p.Nodes, p.Endpoint.SQL)
+}
+
+// composeWith builds a query from upstream nodes (as CTEs, in file order) and a
+// terminal SELECT. Shared by the endpoint (RunFormat) and copy (RunCopy) paths.
+func composeWith(nodes []model.Node, terminalSQL string) string {
+	terminalSQL = strings.TrimSpace(terminalSQL)
+	if len(nodes) == 0 {
+		return terminalSQL
 	}
-	ctes := make([]string, len(p.Nodes))
-	for i, n := range p.Nodes {
+	ctes := make([]string, len(nodes))
+	for i, n := range nodes {
 		ctes[i] = n.Name + " AS (" + strings.TrimSpace(n.SQL) + ")"
 	}
-	return "WITH " + strings.Join(ctes, ", ") + " " + endpointSQL
+	return "WITH " + strings.Join(ctes, ", ") + " " + terminalSQL
 }

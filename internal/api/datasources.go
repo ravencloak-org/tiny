@@ -10,14 +10,11 @@ import (
 )
 
 // handleListDatasources serves GET /v0/datasources — the Tinybird datasource
-// listing/introspection endpoint. It returns every registered datasource with
-// its columns and engine, wrapped in Tinybird's {"datasources":[...]} envelope
-// so existing clients (tb CLI / SDK introspection) work unchanged.
-//
-// ADMIN-gated by the route (see server.go): enumerating every datasource schema
-// is a privileged operation, mirroring /v0/sql. Tinybird instead returns a
-// token-scope-filtered subset; that's a deferred follow-up (no READ-datasource
-// scope primitive exists yet — see docs/parity-gaps.md).
+// listing/introspection endpoint. It returns the registered datasources the
+// caller's token can READ (ADMIN sees all), wrapped in Tinybird's
+// {"datasources":[...]} envelope so existing clients (tb CLI / SDK introspection)
+// work unchanged. The per-token subset matches Tinybird, which narrows the list
+// rather than 403-ing it. READ:<ds> is the scope primitive (docs/parity-gaps.md).
 func (s *server) handleListDatasources(w http.ResponseWriter, r *http.Request) {
 	dss, err := s.deps.Datasources.List(r.Context())
 	if err != nil {
@@ -25,20 +22,28 @@ func (s *server) handleListDatasources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tok, _ := tokenFrom(r.Context())
 	// Non-nil empty slice so the JSON is {"datasources":[]} (not null) when empty.
 	items := make([]dsItem, 0, len(dss))
 	for _, ds := range dss {
-		items = append(items, toDSItem(ds))
+		if allow(tok, "READ", ds.Name) {
+			items = append(items, toDSItem(ds))
+		}
 	}
 	encodeJSON(w, http.StatusOK, dsListResp{Datasources: items})
 }
 
 // handleGetDatasource serves GET /v0/datasources/{name} — single datasource
-// detail (schema + engine). ADMIN-gated like the list; returns the datasource
-// object directly (unwrapped), mirroring the list DTO and Tinybird. 404 when the
+// detail (schema + engine). READ:<ds> scoped (ADMIN sees all); returns the
+// datasource object directly (unwrapped), mirroring the list DTO and Tinybird.
+// 403 when the token lacks READ for the datasource (checked first), 404 when the
 // name is unknown.
 func (s *server) handleGetDatasource(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
+	if tok, _ := tokenFrom(r.Context()); !allow(tok, "READ", name) {
+		writeError(w, http.StatusForbidden, "token lacks READ scope for datasource: "+name)
+		return
+	}
 	ds, ok, err := s.deps.Datasources.Get(r.Context(), name)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not get datasource: "+err.Error())

@@ -86,6 +86,7 @@ func runServe(ctx context.Context, cfg config.Config) error {
 		log.Warn("could not ensure pipe_stats table", "err", err)
 	}
 	executor := pipe.NewExecutor(ch, pipeReg, dsReg, stats)
+	executor.EnableCopy(ch) // wire the write path for copy-pipe triggers (gap #9)
 
 	if cfg.AdminToken != "" {
 		if err := tokens.Bootstrap(ctx, cfg.AdminToken); err != nil {
@@ -108,6 +109,7 @@ func runServe(ctx context.Context, cfg config.Config) error {
 		Handler: api.New(api.Deps{
 			Ingester:          gath,
 			Pipes:             executor,
+			CopyRunner:        executor,
 			PipeReg:           pipeReg,
 			Datasources:       dsReg,
 			Tokens:            tokens,

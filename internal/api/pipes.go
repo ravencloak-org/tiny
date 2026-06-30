@@ -48,37 +48,84 @@ func contentTypeFor(f model.OutputFormat) string {
 		return "text/csv"
 	case model.FormatNDJSON:
 		return "application/x-ndjson"
+	case model.FormatParquet:
+		// ponytail: Parquet has no single universally-agreed MIME. Tinybird serves
+		// the .parquet endpoint as a binary blob; application/octet-stream is the
+		// widely-compatible binary type (the IANA-registered
+		// application/vnd.apache.parquet is newer and less universally handled).
+		return "application/octet-stream"
 	default:
 		return "application/json"
 	}
 }
 
 // handleListPipes serves GET /v0/pipes — the Tinybird pipe listing/introspection
-// endpoint. It returns every registered pipe (nodes, endpoint params) wrapped in
-// Tinybird's {"pipes":[...]} envelope so clients (tb pipe ls / SDK discovery)
-// work unchanged. ADMIN-gated by the route, mirroring /v0/datasources: a
-// token-scope-filtered subset is the deferred follow-up (docs/parity-gaps.md).
-func (s *server) handleListPipes(w http.ResponseWriter, _ *http.Request) {
+// endpoint. It returns the registered pipes the caller's token can READ (ADMIN
+// sees all), wrapped in Tinybird's {"pipes":[...]} envelope so clients (tb pipe
+// ls / SDK discovery) work unchanged. The per-token subset matches Tinybird,
+// which never 403s the list — it just narrows it (docs/parity-gaps.md).
+func (s *server) handleListPipes(w http.ResponseWriter, r *http.Request) {
+	tok, _ := tokenFrom(r.Context())
 	pipes := s.deps.PipeReg.List()
 	// Non-nil empty slice so the JSON is {"pipes":[]} (not null) when empty.
 	items := make([]pipeItem, 0, len(pipes))
 	for _, p := range pipes {
-		items = append(items, toPipeItem(p))
+		if allow(tok, "READ", p.Name) {
+			items = append(items, toPipeItem(p))
+		}
 	}
 	encodeJSON(w, http.StatusOK, pipeListResp{Pipes: items})
 }
 
 // handleGetPipe serves GET /v0/pipes/{name} (no extension) — single pipe
-// definition (nodes, endpoint node, params). ADMIN-gated; returns the pipe
-// object directly (unwrapped), matching Tinybird. 404 when the name is unknown.
+// definition (nodes, endpoint node, params). READ:<pipe> scoped (ADMIN sees all);
+// returns the pipe object directly (unwrapped), matching Tinybird. 403 when the
+// token lacks READ for the pipe (checked first, mirroring the data path), 404
+// when the name is unknown.
 func (s *server) handleGetPipe(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
+	if tok, _ := tokenFrom(r.Context()); !allow(tok, "READ", name) {
+		writeError(w, http.StatusForbidden, "token lacks READ scope for pipe: "+name)
+		return
+	}
 	p, ok := s.deps.PipeReg.Get(name)
 	if !ok {
 		writeError(w, http.StatusNotFound, "pipe not found: "+name)
 		return
 	}
 	encodeJSON(w, http.StatusOK, toPipeItem(p))
+}
+
+// handleCopyPipe serves POST /v0/pipes/{name}/copy — trigger an on-demand copy
+// (Tinybird copy-pipe API). It resolves the pipe's target datasource to authorize
+// the caller (ADMIN or APPEND:<target>), then runs INSERT INTO <target> SELECT
+// <pipe SQL> via the CopyRunner and returns the Tinybird-shaped job body. Request
+// query params bind the copy SQL's {{Type(name)}} placeholders.
+func (s *server) handleCopyPipe(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	p, ok := s.deps.PipeReg.Get(name)
+	if !ok || p.Copy == nil {
+		// A non-copy or unknown pipe has no copy target to authorize against; 404 it
+		// without leaking whether a same-named query pipe exists.
+		writeError(w, http.StatusNotFound, "copy pipe not found: "+name)
+		return
+	}
+	// ADMIN or an APPEND scope on the target datasource (allow() treats ADMIN as a
+	// superuser, so this covers both).
+	if tok, _ := tokenFrom(r.Context()); !allow(tok, "APPEND", p.Copy.TargetDatasource) {
+		writeError(w, http.StatusForbidden,
+			"token lacks APPEND scope for copy target: "+p.Copy.TargetDatasource)
+		return
+	}
+	body, status, err := s.deps.CopyRunner.RunCopy(r.Context(), name, r.URL.Query())
+	if err != nil {
+		if status == 0 {
+			status = http.StatusInternalServerError
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+	writeBody(w, status, "application/json", body)
 }
 
 // pipeListResp is the Tinybird-shaped envelope for GET /v0/pipes.
@@ -140,6 +187,18 @@ func toPipeItem(p *model.Pipe) pipeItem {
 	case p.Material != nil:
 		typ = "materialized"
 		nodes = append(nodes, pipeNode{Name: p.Material.Name, SQL: p.Material.SQL, Params: []pipeParam{}})
+	case p.Copy != nil:
+		typ = "copy"
+		params := make([]pipeParam, len(p.Copy.Params))
+		for i, pm := range p.Copy.Params {
+			var def *string
+			if pm.HasDefault {
+				d := pm.Default
+				def = &d
+			}
+			params[i] = pipeParam{Name: pm.Name, Type: string(pm.Type), Default: def}
+		}
+		nodes = append(nodes, pipeNode{Name: p.Copy.Name, SQL: p.Copy.SQL, Params: params})
 	}
 
 	return pipeItem{Name: p.Name, Type: typ, Endpoint: endpoint, Nodes: nodes}

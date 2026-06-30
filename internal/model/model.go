@@ -48,9 +48,10 @@ type ParamType string
 type OutputFormat string
 
 const (
-	FormatJSON   OutputFormat = "json"   // CH FORMAT JSON   -> application/json
-	FormatCSV    OutputFormat = "csv"    // CH FORMAT CSVWithNames -> text/csv (header row)
-	FormatNDJSON OutputFormat = "ndjson" // CH FORMAT JSONEachRow -> application/x-ndjson
+	FormatJSON    OutputFormat = "json"    // CH FORMAT JSON   -> application/json
+	FormatCSV     OutputFormat = "csv"     // CH FORMAT CSVWithNames -> text/csv (header row)
+	FormatNDJSON  OutputFormat = "ndjson"  // CH FORMAT JSONEachRow -> application/x-ndjson
+	FormatParquet OutputFormat = "parquet" // CH FORMAT Parquet -> application/octet-stream (binary)
 )
 
 // Param is a {{Type(name, default)}} placeholder extracted from an ENDPOINT SQL
@@ -84,13 +85,31 @@ type Materialization struct {
 	SQL         string
 }
 
+// Copy is a TYPE copy pipe (Tinybird copy pipes): it runs its SQL and INSERTs
+// the result into TargetDatasource. Mirrors Materialization, plus an optional
+// cron Schedule (COPY_SCHEDULE). The copy node may be parameterized, so it
+// carries its own Params (extracted like an Endpoint's).
+//
+// ponytail: Schedule is parsed and surfaced (introspection, tr deploy) but NOT
+// auto-executed — there is no in-process cron scheduler yet. On-demand triggering
+// via POST /v0/pipes/{name}/copy is the implemented path; scheduled runs are a
+// deferred follow-up (would need a scheduler + the /v0/jobs surface, gap #8).
+type Copy struct {
+	Name             string
+	TargetDatasource string  // INSERT target; validated to exist at deploy time
+	Schedule         string  // cron expression from COPY_SCHEDULE; "" = on-demand only
+	SQL              string  // the SELECT whose rows are inserted
+	Params           []Param // {{Type(name)}} placeholders in the copy SQL, in order
+}
+
 // Pipe is a parsed .pipe file. A pipe has zero or more NODEs and at most one
-// ENDPOINT or MATERIALIZATION.
+// terminal block: an ENDPOINT, a MATERIALIZATION, or a COPY (TYPE copy).
 type Pipe struct {
 	Name     string
 	Nodes    []Node
 	Endpoint *Endpoint
 	Material *Materialization
+	Copy     *Copy
 	Raw      string
 }
 
@@ -128,6 +147,14 @@ type CHInserter interface {
 // (caller asks for FORMAT JSON).
 type CHQuerier interface {
 	Query(ctx context.Context, sql string, params, settings map[string]string) ([]byte, error)
+}
+
+// CHWriter runs a write statement (INSERT INTO ... SELECT) over the read-write
+// ClickHouse identity, binding CH params (param_<name> values). Copy pipes use
+// it to land a query's rows in a target datasource; the read-only Query path
+// (readonly=2; ADR 0011) would refuse the INSERT, so this is a separate method.
+type CHWriter interface {
+	InsertSelect(ctx context.Context, sql string, params map[string]string) error
 }
 
 // Pinger is a generic readiness probe (Redis, ClickHouse) — Ping returns nil
@@ -173,6 +200,15 @@ type Ingester interface {
 type PipeRunner interface {
 	Run(ctx context.Context, name string, params url.Values) (body []byte, status int, err error)
 	RunFormat(ctx context.Context, name string, params url.Values, format OutputFormat) (body []byte, status int, err error)
+}
+
+// CopyRunner triggers a TYPE copy pipe on demand: it composes the copy SQL (same
+// param binding/control flow as a query), runs INSERT INTO <target> SELECT ...
+// over the write path, and returns a Tinybird-shaped copy-job JSON body. status
+// is the HTTP status to send. Kept separate from PipeRunner so query-only callers
+// (and their fakes) need not implement it.
+type CopyRunner interface {
+	RunCopy(ctx context.Context, name string, params url.Values) (body []byte, status int, err error)
 }
 
 // QueryStat is one pipe execution's observability record (ADR 0014). Fed through

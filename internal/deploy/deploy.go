@@ -104,6 +104,7 @@ type Report struct {
 	Breaking          []string
 	BreakingApplied   []string
 	MaterializedViews []string
+	CopyPipes         []string
 	Tokens            []string
 }
 
@@ -253,6 +254,21 @@ func Run(ctx context.Context, dir string, ch CH, dsReg model.DatasourceRegistry,
 			return report, err
 		}
 		report.MaterializedViews = append(report.MaterializedViews, p.Material.Name)
+	}
+
+	// Copy-pipe pass (gap #9): validate each TYPE copy pipe's target datasource
+	// exists. No DDL — the INSERT runs on trigger (POST /v0/pipes/{name}/copy).
+	// ponytail: COPY_SCHEDULE is parsed and surfaced but not auto-executed yet
+	// (no in-process scheduler / jobs surface); on-demand triggering is the
+	// implemented path. Target validation runs even on a dry run.
+	for _, p := range pipes {
+		if p.Copy == nil {
+			continue
+		}
+		if err := validateCopyTarget(ctx, ch, p.Copy, known); err != nil {
+			return report, err
+		}
+		report.CopyPipes = append(report.CopyPipes, p.Copy.Name)
 	}
 
 	// Resource-token materialization (ADR 0030): mint/upsert the tokens declared
@@ -405,6 +421,27 @@ func ensureMaterialization(ctx context.Context, ch CH, m *model.Materialization,
 		return nil // dry run: target validated, MV creation skipped
 	}
 	return ch.CreateMaterializedView(ctx, m)
+}
+
+// validateCopyTarget checks that a copy pipe's target datasource exists before
+// the pipe is wired (gap #9): normally one of the project's datasources (known),
+// otherwise a live-schema check allows targeting a pre-existing table. No DDL is
+// emitted — the copy's INSERT runs at trigger time.
+func validateCopyTarget(ctx context.Context, ch CH, c *model.Copy, known map[string]bool) error {
+	if c.TargetDatasource == "" {
+		return fmt.Errorf("copy pipe %q has no target datasource", c.Name)
+	}
+	if known[c.TargetDatasource] {
+		return nil
+	}
+	live, err := liveColumns(ctx, ch, c.TargetDatasource)
+	if err != nil {
+		return fmt.Errorf("check copy target %q: %w", c.TargetDatasource, err)
+	}
+	if len(live) == 0 {
+		return fmt.Errorf("copy pipe %q target datasource %q does not exist", c.Name, c.TargetDatasource)
+	}
+	return nil
 }
 
 // parseAll parses every .datasource/.pipe under dir, aggregating every parse/

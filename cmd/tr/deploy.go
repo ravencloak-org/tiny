@@ -100,6 +100,9 @@ func printReport(r *deploy.Report) {
 	for _, mv := range r.MaterializedViews {
 		fmt.Printf("✓ Materialized view: %s\n", mv)
 	}
+	for _, cp := range r.CopyPipes {
+		fmt.Printf("✓ Copy pipe: %s\n", cp)
+	}
 	for _, tk := range r.Tokens {
 		fmt.Printf("✓ Token materialized: %s\n", tk)
 	}

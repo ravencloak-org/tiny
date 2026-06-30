@@ -26,13 +26,15 @@ var placeholderRe = regexp.MustCompile(`\{\{\s*(\w+)\s*\(\s*(\w+)\s*(,\s*(.*?)\s
 
 // block is one NODE/ENDPOINT/MATERIALIZATION section while parsing.
 type block struct {
-	kind        string // "node", "endpoint", or "materialization"
-	name        string
-	sql         string
-	typ         string // TYPE directive value, lowercased
-	rateLimit   int
-	cacheTTL    int
-	targetTable string
+	kind             string // "node", "endpoint", or "materialization"
+	name             string
+	sql              string
+	typ              string // TYPE directive value, lowercased
+	rateLimit        int
+	cacheTTL         int
+	targetTable      string // TARGET_TABLE (materialization)
+	targetDatasource string // TARGET_DATASOURCE (copy)
+	schedule         string // COPY_SCHEDULE cron (copy)
 }
 
 // ParseFile reads a .pipe file and parses it. Pipe.Name is the file basename
@@ -69,7 +71,8 @@ func Parse(name, raw string) (*model.Pipe, error) {
 	}
 
 	tb := blocks[term]
-	if tb.kind == "materialization" || tb.typ == "materialization" {
+	switch {
+	case tb.kind == "materialization" || tb.typ == "materialization":
 		p.Material = &model.Materialization{
 			Name:        tb.name,
 			TargetTable: tb.targetTable,
@@ -77,7 +80,18 @@ func Parse(name, raw string) (*model.Pipe, error) {
 		}
 		// ponytail: materializations take no runtime params in MVP, so we skip
 		// placeholder extraction for them.
-	} else {
+	case tb.typ == "copy":
+		if tb.targetDatasource == "" {
+			return nil, fmt.Errorf("invalid pipe %q: TYPE copy requires TARGET_DATASOURCE", name)
+		}
+		p.Copy = &model.Copy{
+			Name:             tb.name,
+			TargetDatasource: tb.targetDatasource,
+			Schedule:         tb.schedule,
+			SQL:              tb.sql,
+			Params:           extractParams(p.Nodes, tb.sql),
+		}
+	default:
 		p.Endpoint = &model.Endpoint{
 			Name:      tb.name,
 			SQL:       tb.sql,
@@ -98,7 +112,7 @@ func terminalIndex(blocks []block) int {
 		switch {
 		case b.kind == "endpoint" || b.kind == "materialization":
 			term = i
-		case b.typ == "endpoint" || b.typ == "query" || b.typ == "materialization":
+		case b.typ == "endpoint" || b.typ == "query" || b.typ == "materialization" || b.typ == "copy":
 			term = i
 		}
 	}
@@ -216,6 +230,14 @@ func parseBlocks(raw string) ([]block, error) {
 		case "TARGET_TABLE":
 			if cur != nil {
 				cur.targetTable = strings.TrimSpace(rest)
+			}
+		case "TARGET_DATASOURCE":
+			if cur != nil {
+				cur.targetDatasource = strings.TrimSpace(rest)
+			}
+		case "COPY_SCHEDULE":
+			if cur != nil {
+				cur.schedule = strings.TrimSpace(rest)
 			}
 		default:
 			// ponytail: unknown directives (DESCRIPTION, TAGS, TOKEN, ...) are

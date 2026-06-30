@@ -19,7 +19,8 @@ import (
 // server degrades gracefully if a piece isn't wired.
 type Deps struct {
 	Ingester    model.Ingester           // POST /v0/events
-	Pipes       model.PipeRunner         // GET  /v0/pipes/{name}.{json,csv,ndjson}
+	Pipes       model.PipeRunner         // GET  /v0/pipes/{name}.{json,csv,ndjson,parquet}
+	CopyRunner  model.CopyRunner         // POST /v0/pipes/{name}/copy (optional; needs PipeReg)
 	PipeReg     model.PipeRegistry       // GET  /v0/pipes, /v0/pipes/{name} (optional)
 	Datasources model.DatasourceRegistry // GET  /v0/datasources[/{name}] (optional)
 	Tokens      model.TokenStore         // auth middleware
@@ -86,16 +87,24 @@ func New(deps Deps) http.Handler {
 			r.With(s.adminOnly).Handle("/sql", deps.SQLProxy) // GET + POST
 		}
 		if deps.Datasources != nil {
-			// Listing/inspecting datasource schemas is privileged -> ADMIN only.
-			r.With(s.adminOnly).Get("/datasources", s.handleListDatasources)
-			r.With(s.adminOnly).Get("/datasources/{name}", s.handleGetDatasource)
+			// Token-scope-filtered listing (Tinybird parity): each token sees the
+			// datasources it can READ; ADMIN sees all. The handlers do the filtering.
+			r.Get("/datasources", s.handleListDatasources)
+			r.Get("/datasources/{name}", s.handleGetDatasource)
 		}
 		if deps.PipeReg != nil {
-			// Pipe definition introspection is privileged -> ADMIN only (the data
-			// path below stays READ-scoped). Note: {name} must not swallow the
-			// .json/.csv/.ndjson data routes; chi matches the static suffix first.
-			r.With(s.adminOnly).Get("/pipes", s.handleListPipes)
-			r.With(s.adminOnly).Get("/pipes/{name}", s.handleGetPipe)
+			// Scope-filtered pipe introspection (Tinybird parity): READ:<pipe> sees
+			// that pipe; ADMIN sees all. Note: {name} must not swallow the
+			// .json/.csv/.ndjson/.parquet data routes; chi matches the static suffix
+			// first.
+			r.Get("/pipes", s.handleListPipes)
+			r.Get("/pipes/{name}", s.handleGetPipe)
+			// On-demand copy trigger: runs INSERT INTO <target> SELECT <pipe SQL>.
+			// ADMIN or APPEND:<target> (checked in the handler, which resolves the
+			// target from the pipe). Needs both the runner and the registry.
+			if deps.CopyRunner != nil {
+				r.Post("/pipes/{name}/copy", s.handleCopyPipe)
+			}
 		}
 		if deps.OpenAPI != nil {
 			r.Get("/openapi.json", s.handleOpenAPI)
@@ -110,6 +119,7 @@ func New(deps Deps) http.Handler {
 			r.Get("/pipes/{name}.json", s.handlePipe(model.FormatJSON))
 			r.Get("/pipes/{name}.csv", s.handlePipe(model.FormatCSV))
 			r.Get("/pipes/{name}.ndjson", s.handlePipe(model.FormatNDJSON))
+			r.Get("/pipes/{name}.parquet", s.handlePipe(model.FormatParquet))
 		})
 	})
 

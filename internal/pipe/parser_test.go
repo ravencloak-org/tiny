@@ -60,6 +60,51 @@ CACHE_TTL 60`
 	}
 }
 
+func TestParse_CopyPipe(t *testing.T) {
+	raw := `NODE filtered
+SQL >
+    SELECT * FROM events WHERE event = {{String(event_type)}}
+
+NODE cp
+SQL >
+    SELECT * FROM filtered
+TYPE copy
+TARGET_DATASOURCE events_archive
+COPY_SCHEDULE 0 * * * *`
+
+	p, err := Parse("archive_events", raw)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if p.Endpoint != nil || p.Material != nil {
+		t.Fatalf("copy pipe must not parse as endpoint/materialization")
+	}
+	if p.Copy == nil {
+		t.Fatal("Copy is nil")
+	}
+	if p.Copy.TargetDatasource != "events_archive" {
+		t.Errorf("TargetDatasource = %q, want events_archive", p.Copy.TargetDatasource)
+	}
+	if p.Copy.Schedule != "0 * * * *" {
+		t.Errorf("Schedule = %q, want \"0 * * * *\"", p.Copy.Schedule)
+	}
+	// Upstream "filtered" becomes a CTE node; "cp" is the terminal copy block.
+	if len(p.Nodes) != 1 || p.Nodes[0].Name != "filtered" {
+		t.Fatalf("Nodes = %+v, want [filtered]", p.Nodes)
+	}
+	// The upstream node's placeholder is aggregated onto the copy's params.
+	if len(p.Copy.Params) != 1 || p.Copy.Params[0].Name != "event_type" || p.Copy.Params[0].Type != "String" {
+		t.Fatalf("Copy.Params = %+v, want [event_type:String]", p.Copy.Params)
+	}
+}
+
+func TestParse_CopyMissingTargetFails(t *testing.T) {
+	raw := "NODE c\nSQL >\n    SELECT 1\nTYPE copy"
+	if _, err := Parse("p", raw); err == nil || !strings.Contains(err.Error(), "TARGET_DATASOURCE") {
+		t.Fatalf("err = %v, want a TARGET_DATASOURCE requirement error", err)
+	}
+}
+
 func TestParse_ParamDefaultsAndDedup(t *testing.T) {
 	raw := `NODE endpoint
 SQL >
