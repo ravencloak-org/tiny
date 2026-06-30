@@ -72,16 +72,38 @@ func Generate(pipes []*model.Pipe) []byte {
 		Paths:   basePaths(),
 	}
 	for _, p := range pipes {
+		// COPY pipes (TYPE copy) publish an on-demand trigger, not a query route.
+		if p.Copy != nil {
+			doc.Paths["/v0/pipes/"+p.Name+"/copy"] = pathItem{
+				Post: &operation{
+					Summary:     "Run the " + p.Name + " copy pipe (INSERT INTO " + p.Copy.TargetDatasource + ")",
+					OperationID: "copyPipe_" + p.Name,
+					Responses:   map[string]response{"200": {Description: "Copy executed"}},
+				},
+			}
+			continue
+		}
 		if p.Endpoint == nil {
 			continue // materializations publish no HTTP route
 		}
-		doc.Paths["/v0/pipes/"+p.Name+".json"] = pathItem{
-			Get: &operation{
-				Summary:     "Query the " + p.Name + " pipe",
-				OperationID: "queryPipe_" + p.Name,
-				Parameters:  pipeParams(p.Endpoint.Params),
-				Responses:   map[string]response{"200": pipeResponse()},
-			},
+		// One path per output format (ADR 0029 parity): .json carries the typed
+		// JSON envelope; .csv/.ndjson/.parquet are the same query in other formats.
+		params := pipeParams(p.Endpoint.Params)
+		doc.Paths["/v0/pipes/"+p.Name+".json"] = pathItem{Get: &operation{
+			Summary: "Query the " + p.Name + " pipe (JSON)", OperationID: "queryPipe_" + p.Name,
+			Parameters: params, Responses: map[string]response{"200": pipeResponse()},
+		}}
+		for _, f := range []struct{ ext, ctype, desc string }{
+			{"csv", "text/csv", "CSV with header row"},
+			{"ndjson", "application/x-ndjson", "Newline-delimited JSON rows"},
+			{"parquet", "application/octet-stream", "Apache Parquet (binary)"},
+		} {
+			doc.Paths["/v0/pipes/"+p.Name+"."+f.ext] = pathItem{Get: &operation{
+				Summary:     "Query the " + p.Name + " pipe (" + f.ext + ")",
+				OperationID: "queryPipe_" + p.Name + "_" + f.ext,
+				Parameters:  params,
+				Responses:   map[string]response{"200": {Description: f.desc, Content: map[string]mediaType{f.ctype: {Schema: schema{Type: "string"}}}}},
+			}}
 		}
 	}
 	// MarshalIndent: the spec is served to humans and tooling; the small size
@@ -112,9 +134,26 @@ func basePaths() map[string]pathItem {
 			Responses:   jsonResp("Query result"),
 		}},
 		"/v0/pipes": {Get: &operation{
-			Summary:     "List published pipes",
+			Summary:     "List published pipes (scope-filtered; ADMIN sees all)",
 			OperationID: "listPipes",
 			Responses:   jsonResp("Pipe list"),
+		}},
+		"/v0/pipes/{name}": {Get: &operation{
+			Summary:     "Get a pipe definition (nodes, endpoint params)",
+			OperationID: "getPipe",
+			Parameters:  []parameter{nameParam()},
+			Responses:   jsonResp("Pipe definition"),
+		}},
+		"/v0/datasources": {Get: &operation{
+			Summary:     "List datasources (scope-filtered; ADMIN sees all)",
+			OperationID: "listDatasources",
+			Responses:   jsonResp("Datasource list"),
+		}},
+		"/v0/datasources/{name}": {Get: &operation{
+			Summary:     "Get a datasource (schema + engine)",
+			OperationID: "getDatasource",
+			Parameters:  []parameter{nameParam()},
+			Responses:   jsonResp("Datasource detail"),
 		}},
 		"/v0/metrics": {Get: &operation{
 			Summary:     "Prometheus metrics scrape",
@@ -136,6 +175,11 @@ func basePaths() map[string]pathItem {
 
 // pipeParams renders endpoint template params as typed query parameters. A param
 // is required iff it has no default.
+// nameParam is the {name} path parameter shared by the per-resource GET routes.
+func nameParam() parameter {
+	return parameter{Name: "name", In: "path", Required: true, Schema: schema{Type: "string"}}
+}
+
 func pipeParams(params []model.Param) []parameter {
 	if len(params) == 0 {
 		return nil

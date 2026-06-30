@@ -21,10 +21,40 @@ func TestGenerate_ValidJSONWithBaseSurface(t *testing.T) {
 	if !ok {
 		t.Fatalf("paths missing or wrong type: %T", doc["paths"])
 	}
-	for _, want := range []string{"/v0/events", "/v0/sql", "/v0/pipes", "/v0/metrics", "/health", "/health/ready"} {
+	for _, want := range []string{
+		"/v0/events", "/v0/sql", "/v0/pipes", "/v0/pipes/{name}",
+		"/v0/datasources", "/v0/datasources/{name}", "/v0/metrics", "/health", "/health/ready",
+	} {
 		if _, ok := paths[want]; !ok {
 			t.Errorf("base path %q missing from spec", want)
 		}
+	}
+}
+
+func TestGenerate_CopyPipeAndFormatVariants(t *testing.T) {
+	endpoint := &model.Pipe{Name: "metrics", Endpoint: &model.Endpoint{Name: "metrics"}}
+	cp := &model.Pipe{Name: "rollup_copy", Copy: &model.Copy{Name: "rollup_copy", TargetDatasource: "rollups"}}
+
+	var doc struct {
+		Paths map[string]map[string]any `json:"paths"`
+	}
+	if err := json.Unmarshal(Generate([]*model.Pipe{endpoint, cp}), &doc); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	// Endpoint pipe gets a path per output format.
+	for _, ext := range []string{"json", "csv", "ndjson", "parquet"} {
+		if _, ok := doc.Paths["/v0/pipes/metrics."+ext]; !ok {
+			t.Errorf("missing format path /v0/pipes/metrics.%s", ext)
+		}
+	}
+	// COPY pipe gets a POST trigger, not a query path.
+	if p, ok := doc.Paths["/v0/pipes/rollup_copy/copy"]; !ok {
+		t.Error("missing POST /v0/pipes/rollup_copy/copy")
+	} else if _, hasPost := p["post"]; !hasPost {
+		t.Error("copy path must be a POST operation")
+	}
+	if _, ok := doc.Paths["/v0/pipes/rollup_copy.json"]; ok {
+		t.Error("copy pipe must not produce a query path")
 	}
 }
 
