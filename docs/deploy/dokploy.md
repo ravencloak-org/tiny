@@ -24,8 +24,9 @@ TR_CLICKHOUSE_DB=tr_main           # optional
 TR_PORT=18000                      # optional host port (default 18000; avoid 80/8000/8080)
 ```
 
-The `tinyraven`/`site` services track `:latest` with `pull_policy: always` — do
-**not** pin a version env. Updates are automatic: see §4.
+The `tinyraven`/`site` image tags come from `TINYRAVEN_TAG`/`SITE_TAG` (default
+`latest`) with `pull_policy: always`. You don't set them by hand — the release
+pipeline pins them to each version tag for you (§4). Updates are automatic.
 
 The image ships the `examples/quickstart` datasource + pipe at `/project`, so the
 app is queryable immediately; replace `/project` (volume or your own image) with
@@ -59,23 +60,34 @@ Health checks: liveness `GET /health`, readiness `GET /health/ready`.
 
 ## 4. Auto-deploy on release (tag → prod, fully automatic)
 
-Once wired, **pushing a `v*` tag updates prod with no manual step** — no version
-env to bump, no SSH:
+Once wired, **pushing a `v*` tag updates prod with no manual step** — no SSH, no
+UI click:
 
 1. `git tag vX.Y.Z && git push --tags`
-2. `.github/workflows/release.yml` builds + pushes `ghcr.io/ravencloak-org/{tiny,tiny-site}:latest`.
-3. Its `deploy-dokploy` job POSTs your Dokploy **Deploy Webhook**.
-4. Dokploy redeploys the compose; `pull_policy: always` on `tinyraven`/`site`
-   pulls the freshly-built `:latest` → the new version goes live.
+2. `.github/workflows/release.yml` builds + pushes the version-tagged images
+   `ghcr.io/ravencloak-org/{tiny,tiny-site}:vX.Y.Z` (and `:latest`).
+3. Its `deploy-dokploy` job pins the Dokploy compose env to that tag through the
+   Dokploy API: `POST /api/compose.update` rewrites the env blob with
+   `TINYRAVEN_TAG=vX.Y.Z` / `SITE_TAG=vX.Y.Z`, then `POST /api/compose.deploy`
+   redeploys.
+4. Because each release is a **new image reference** (a version tag, not the
+   moving `:latest`), Dokploy always pulls the new digest. The old deploy-webhook
+   + `:latest` path recreated the stack from cache and never updated — pinning
+   the version tag is what guarantees the freshly-built image actually goes live.
 
-**One-time setup:**
-1. Dokploy: app → **Deployments → Webhook**, copy the deploy webhook URL.
-2. GitHub: repo → Settings → Secrets and variables → Actions → add secret
-   **`DOKPLOY_DEPLOY_WEBHOOK`** = that URL.
+**One-time setup** — add two repo secrets (Settings → Secrets and variables →
+Actions); the Dokploy URL and compose ID are already baked into the workflow:
 
-Without the secret the deploy step no-ops (CI stays green) and you redeploy from
-the Dokploy UI button instead. Do **not** set a `TINYRAVEN_TAG` env — prod tracks
-`:latest` by design so the tag→deploy loop needs no version bumping.
+| Secret | Purpose |
+| --- | --- |
+| `DOKPLOY_TOKEN` | Dokploy API key (`x-api-key`) for `compose.update` + `compose.deploy`. |
+| `TR_ADMIN_TOKEN` | Bootstrap admin token. `compose.update` **replaces** the whole env blob, so it is re-supplied on every deploy. |
+
+Without `DOKPLOY_TOKEN` the deploy step no-ops (CI stays green) and you redeploy
+from the Dokploy UI button instead. Note that `compose.update` overwrites the
+compose environment wholesale, so any env you set by hand in the Dokploy UI is
+dropped on the next tag deploy — keep CI-managed env (the admin token, the image
+tags) in the workflow, not the UI.
 
 ## 5. Expose at tiny.ravencloak.org (Cloudflare Tunnel)
 
