@@ -386,3 +386,30 @@ Summary:
    - **Session arc:** A `grill-with-docs` design interrogation of TinyRaven concluded fully in the prior (pre-compaction) portion — all architectural decisions walked, captured as ADRs 0001–0032, with PROMPT.md/MILESTONE.md/CONTEXT.md reconciled and committed (c3221f1).
    - **Active user request:** "f...
 
+### Prompt 82
+
+<task-notification>
+<task-id>a901d24da21c36487</task-id>
+<tool-use-id>toolu_01XP3F6voMXi4fRwhsahtiXr</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Expand package-manager distribution" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another ...
+
+### Prompt 83
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   Build, deploy, and distribute **TinyRaven** — an open-source, self-hosted, drop-in **Tinybird-compatible** analytics backend in **Go over OSS ClickHouse** (repo `github.com/tinyraven/tinyraven`, GitHub `ravencloak-org/tiny`). Across the session the user requested, in order:
+   - Run /compact then "sta...
+
+### Prompt 84
+
+wwhat next?
+
+### Prompt 85
+
+all in parallel
+
