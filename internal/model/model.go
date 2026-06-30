@@ -41,6 +41,18 @@ func (d Datasource) QuarantineTable() string { return d.Name + "_quarantine" }
 // ParamType is a templated query parameter type, e.g. String, DateTime, Int64.
 type ParamType string
 
+// OutputFormat is the response format for a published pipe endpoint. It maps to
+// a ClickHouse FORMAT and an HTTP content type (ADR 0003). Tinybird exposes the
+// format as the URL extension on /v0/pipes/{name}.{format}; the zero value
+// FormatJSON is the default ({meta,data,rows,statistics} envelope).
+type OutputFormat string
+
+const (
+	FormatJSON   OutputFormat = "json"   // CH FORMAT JSON   -> application/json
+	FormatCSV    OutputFormat = "csv"    // CH FORMAT CSVWithNames -> text/csv (header row)
+	FormatNDJSON OutputFormat = "ndjson" // CH FORMAT JSONEachRow -> application/x-ndjson
+)
+
 // Param is a {{Type(name, default)}} placeholder extracted from an ENDPOINT SQL
 // body (ADR 0003). MVP supports value params only.
 type Param struct {
@@ -153,10 +165,14 @@ type Ingester interface {
 	Ingest(ctx context.Context, datasource string, rows []json.RawMessage) (successful, quarantined int, err error)
 }
 
-// PipeRunner executes a published pipe endpoint and returns the JSON response
-// body. status is the HTTP status to send; err is for internal failures.
+// PipeRunner executes a published pipe endpoint and returns the response body.
+// status is the HTTP status to send; err is for internal failures. Run returns
+// the default JSON envelope; RunFormat selects the output format (ADR 0003) —
+// only the trailing ClickHouse FORMAT differs, all param binding/validation is
+// shared. Run is retained as the JSON shorthand (RunFormat(..., FormatJSON)).
 type PipeRunner interface {
 	Run(ctx context.Context, name string, params url.Values) (body []byte, status int, err error)
+	RunFormat(ctx context.Context, name string, params url.Values, format OutputFormat) (body []byte, status int, err error)
 }
 
 // QueryStat is one pipe execution's observability record (ADR 0014). Fed through

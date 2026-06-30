@@ -20,3 +20,7 @@ func writeJSON(w http.ResponseWriter, status int, raw []byte) {
 func encodeJSON(w http.ResponseWriter, status int, v any) {
 	apierr.EncodeJSON(w, status, v)
 }
+
+func writeBody(w http.ResponseWriter, status int, contentType string, raw []byte) {
+	apierr.WriteRaw(w, status, contentType, raw)
+}

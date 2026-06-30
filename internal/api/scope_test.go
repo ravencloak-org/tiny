@@ -23,6 +23,9 @@ type fakePipes struct{}
 func (fakePipes) Run(context.Context, string, url.Values) ([]byte, int, error) {
 	return []byte(`{"data":[]}`), http.StatusOK, nil
 }
+func (fakePipes) RunFormat(context.Context, string, url.Values, model.OutputFormat) ([]byte, int, error) {
+	return []byte(`{"data":[]}`), http.StatusOK, nil
+}
 
 type fakeTokens struct{ m map[string]*model.Token }
 

@@ -35,7 +35,14 @@ func WriteErrorWithCode(w http.ResponseWriter, status, dbCode int, msg string) {
 
 // WriteJSON sends a pre-encoded JSON body verbatim (e.g. a ClickHouse response).
 func WriteJSON(w http.ResponseWriter, status int, raw []byte) {
-	w.Header().Set("Content-Type", "application/json")
+	WriteRaw(w, status, "application/json", raw)
+}
+
+// WriteRaw sends a pre-encoded body verbatim with an explicit content type —
+// used for alternate pipe output formats (text/csv, application/x-ndjson) where
+// the ClickHouse response is not JSON.
+func WriteRaw(w http.ResponseWriter, status int, contentType string, raw []byte) {
+	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(status)
 	_, _ = w.Write(raw)
 }

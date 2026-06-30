@@ -108,6 +108,7 @@ func runServe(ctx context.Context, cfg config.Config) error {
 		Handler: api.New(api.Deps{
 			Ingester:          gath,
 			Pipes:             executor,
+			PipeReg:           pipeReg,
 			Datasources:       dsReg,
 			Tokens:            tokens,
 			RedisPing:         tokens, // auth.Store.Ping pings Redis

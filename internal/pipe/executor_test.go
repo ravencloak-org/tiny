@@ -108,6 +108,37 @@ TYPE endpoint`
 	}
 }
 
+// TestRunFormat_AppendsClickHouseFormat verifies the output format selects the
+// trailing ClickHouse FORMAT clause (Tinybird .csv/.ndjson), while param binding
+// is unchanged. Run (the JSON shorthand) must still yield FORMAT JSON.
+func TestRunFormat_AppendsClickHouseFormat(t *testing.T) {
+	raw := "NODE endpoint\nSQL >\n    SELECT {{String(x)}}\nTYPE endpoint"
+	cases := []struct {
+		format   model.OutputFormat
+		wantTail string
+	}{
+		{model.FormatJSON, "FORMAT JSON"},
+		{model.FormatCSV, "FORMAT CSVWithNames"},
+		{model.FormatNDJSON, "FORMAT JSONEachRow"},
+	}
+	for _, c := range cases {
+		t.Run(string(c.format), func(t *testing.T) {
+			ch := &fakeCH{body: []byte("ok")}
+			e := newExec(ch, mustParse(t, "p", raw))
+			_, status, err := e.RunFormat(context.Background(), "p", url.Values{"x": {"v"}}, c.format)
+			if err != nil || status != http.StatusOK {
+				t.Fatalf("RunFormat: status=%d err=%v", status, err)
+			}
+			if got := strings.TrimSpace(ch.gotSQL); !strings.HasSuffix(got, c.wantTail) {
+				t.Errorf("SQL must end with %q:\n%s", c.wantTail, got)
+			}
+			if ch.gotParams["param_x"] != "v" {
+				t.Errorf("bound params = %+v, want param_x=v", ch.gotParams)
+			}
+		})
+	}
+}
+
 func TestRun_MissingRequiredParam(t *testing.T) {
 	raw := "NODE endpoint\nSQL >\n    SELECT {{String(user_id)}}\nTYPE endpoint"
 	ch := &fakeCH{}

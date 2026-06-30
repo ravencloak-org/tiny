@@ -19,8 +19,9 @@ import (
 // server degrades gracefully if a piece isn't wired.
 type Deps struct {
 	Ingester    model.Ingester           // POST /v0/events
-	Pipes       model.PipeRunner         // GET  /v0/pipes/{name}.json
-	Datasources model.DatasourceRegistry // GET  /v0/datasources (optional)
+	Pipes       model.PipeRunner         // GET  /v0/pipes/{name}.{json,csv,ndjson}
+	PipeReg     model.PipeRegistry       // GET  /v0/pipes, /v0/pipes/{name} (optional)
+	Datasources model.DatasourceRegistry // GET  /v0/datasources[/{name}] (optional)
 	Tokens      model.TokenStore         // auth middleware
 	RedisPing   model.Pinger             // readiness
 	CHPing      model.Pinger             // readiness
@@ -85,18 +86,30 @@ func New(deps Deps) http.Handler {
 			r.With(s.adminOnly).Handle("/sql", deps.SQLProxy) // GET + POST
 		}
 		if deps.Datasources != nil {
-			// Listing every datasource schema is privileged -> ADMIN only.
+			// Listing/inspecting datasource schemas is privileged -> ADMIN only.
 			r.With(s.adminOnly).Get("/datasources", s.handleListDatasources)
+			r.With(s.adminOnly).Get("/datasources/{name}", s.handleGetDatasource)
+		}
+		if deps.PipeReg != nil {
+			// Pipe definition introspection is privileged -> ADMIN only (the data
+			// path below stays READ-scoped). Note: {name} must not swallow the
+			// .json/.csv/.ndjson data routes; chi matches the static suffix first.
+			r.With(s.adminOnly).Get("/pipes", s.handleListPipes)
+			r.With(s.adminOnly).Get("/pipes/{name}", s.handleGetPipe)
 		}
 		if deps.OpenAPI != nil {
 			r.Get("/openapi.json", s.handleOpenAPI)
 		}
-		// Pipe reads carry the per-token rate limiter (ADR 0015).
+		// Pipe reads (data path) carry the per-token rate limiter (ADR 0015). Each
+		// format is a distinct static-suffix route; only the CH FORMAT + content
+		// type differ (READ:<pipe> scoped).
 		r.Group(func(r chi.Router) {
 			if deps.RateLimit != nil {
 				r.Use(deps.RateLimit)
 			}
-			r.Get("/pipes/{name}.json", s.handlePipe)
+			r.Get("/pipes/{name}.json", s.handlePipe(model.FormatJSON))
+			r.Get("/pipes/{name}.csv", s.handlePipe(model.FormatCSV))
+			r.Get("/pipes/{name}.ndjson", s.handlePipe(model.FormatNDJSON))
 		})
 	})
 

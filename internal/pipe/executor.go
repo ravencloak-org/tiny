@@ -37,9 +37,17 @@ var _ model.PipeRunner = (*Executor)(nil)
 var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Run executes the endpoint of the named pipe and returns the ClickHouse JSON
-// body. status is the HTTP status the API should send; err carries the failure
-// reason for client-mappable cases (ADR 0012).
+// body. It is the JSON shorthand for RunFormat (ADR 0003).
 func (e *Executor) Run(ctx context.Context, name string, params url.Values) (body []byte, status int, err error) {
+	return e.RunFormat(ctx, name, params, model.FormatJSON)
+}
+
+// RunFormat executes the endpoint of the named pipe and returns the body in the
+// requested output format. status is the HTTP status the API should send; err
+// carries the failure reason for client-mappable cases (ADR 0012). Only the
+// trailing ClickHouse FORMAT varies by format — param binding, control flow and
+// validation are identical across formats.
+func (e *Executor) RunFormat(ctx context.Context, name string, params url.Values, format model.OutputFormat) (body []byte, status int, err error) {
 	p, ok := e.pipes.Get(name)
 	if !ok {
 		return nil, http.StatusNotFound, fmt.Errorf("pipe not found: %s", name)
@@ -115,9 +123,10 @@ func (e *Executor) Run(ctx context.Context, name string, params url.Values) (bod
 		settings["query_cache_ttl"] = strconv.Itoa(p.Endpoint.CacheTTL)
 	}
 
-	// FORMAT JSON yields ClickHouse's {"meta":[...],"data":[...],...} shape,
-	// compatible with Tinybird's /v0/pipes/{name}.json response for MVP.
-	sql = strings.TrimSpace(strings.TrimRight(strings.TrimSpace(sql), ";")) + "\nFORMAT JSON"
+	// Append the ClickHouse FORMAT for the requested output (ADR 0003). FORMAT
+	// JSON yields the {"meta":[...],"data":[...],...} envelope (Tinybird .json);
+	// CSVWithNames/JSONEachRow produce the raw .csv/.ndjson bodies.
+	sql = strings.TrimSpace(strings.TrimRight(strings.TrimSpace(sql), ";")) + "\nFORMAT " + chFormat(format)
 
 	start := time.Now()
 	body, err = e.ch.Query(ctx, sql, chParams, settings)
@@ -126,8 +135,26 @@ func (e *Executor) Run(ctx context.Context, name string, params url.Values) (bod
 		// ADR 0012: surface CH errors as 400 with the body so the API maps them.
 		return body, http.StatusBadRequest, err
 	}
-	readRows, readBytes = parseStats(body)
+	// Read counters live in the FORMAT JSON "statistics" object; for csv/ndjson
+	// they aren't present, so the stat records zero rows/bytes (best-effort, the
+	// status/error/duration are still recorded). ponytail: acceptable delta.
+	if format == model.FormatJSON {
+		readRows, readBytes = parseStats(body)
+	}
 	return body, http.StatusOK, nil
+}
+
+// chFormat maps an output format to the ClickHouse FORMAT clause. Unknown
+// formats fall back to JSON (the handler only routes the three known suffixes).
+func chFormat(f model.OutputFormat) string {
+	switch f {
+	case model.FormatCSV:
+		return "CSVWithNames" // header row, matching Tinybird's .csv
+	case model.FormatNDJSON:
+		return "JSONEachRow" // newline-delimited JSON objects
+	default:
+		return "JSON"
+	}
 }
 
 // chParamType maps a template parameter type to the ClickHouse type used in the

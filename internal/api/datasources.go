@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/tinyraven/tinyraven/internal/model"
 )
 
@@ -29,6 +31,24 @@ func (s *server) handleListDatasources(w http.ResponseWriter, r *http.Request) {
 		items = append(items, toDSItem(ds))
 	}
 	encodeJSON(w, http.StatusOK, dsListResp{Datasources: items})
+}
+
+// handleGetDatasource serves GET /v0/datasources/{name} — single datasource
+// detail (schema + engine). ADMIN-gated like the list; returns the datasource
+// object directly (unwrapped), mirroring the list DTO and Tinybird. 404 when the
+// name is unknown.
+func (s *server) handleGetDatasource(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	ds, ok, err := s.deps.Datasources.Get(r.Context(), name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not get datasource: "+err.Error())
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "datasource not found: "+name)
+		return
+	}
+	encodeJSON(w, http.StatusOK, toDSItem(ds))
 }
 
 // dsListResp is the Tinybird-shaped envelope for GET /v0/datasources.

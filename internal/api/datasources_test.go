@@ -15,12 +15,17 @@ import (
 // /v0/datasources handler; Get/Put satisfy the interface.
 type fakeDSReg struct {
 	list []*model.Datasource
+	get  map[string]*model.Datasource // backs Get; nil -> always not-found
 	err  error
 }
 
 func (f fakeDSReg) List(context.Context) ([]*model.Datasource, error) { return f.list, f.err }
-func (fakeDSReg) Get(context.Context, string) (*model.Datasource, bool, error) {
-	return nil, false, nil
+func (f fakeDSReg) Get(_ context.Context, name string) (*model.Datasource, bool, error) {
+	if f.err != nil {
+		return nil, false, f.err
+	}
+	ds, ok := f.get[name]
+	return ds, ok, nil
 }
 func (fakeDSReg) Put(context.Context, *model.Datasource) error { return nil }
 
@@ -143,5 +148,69 @@ func TestListDatasourcesError(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500 (body %s)", rec.Code, rec.Body.String())
+	}
+}
+
+// TestGetDatasource covers GET /v0/datasources/{name}: admin gets the unwrapped
+// datasource object (mirroring the list DTO), unknown -> 404, non-admin -> 403,
+// registry error -> 500.
+func TestGetDatasource(t *testing.T) {
+	reg := fakeDSReg{get: map[string]*model.Datasource{
+		"events": {
+			Name:   "events",
+			Engine: "MergeTree",
+			Schema: []model.Column{
+				{Name: "ts", Type: "DateTime"},
+				{Name: "user_id", Type: "Nullable(String)"},
+			},
+		},
+	}}
+	h := newDSServer(reg)
+
+	// admin, found: unwrapped dsItem with mapped columns.
+	req := httptest.NewRequest(http.MethodGet, "/v0/datasources/events", nil)
+	req.Header.Set("Authorization", "Bearer adm")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+	var got dsItem
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v (body %s)", err, rec.Body.String())
+	}
+	if got.Name != "events" || got.Engine.Engine != "MergeTree" || len(got.Columns) != 2 {
+		t.Fatalf("ds = %+v, want events/MergeTree/2 cols", got)
+	}
+	if !got.Columns[1].Nullable {
+		t.Fatalf("col[1] %q should be nullable", got.Columns[1].Type)
+	}
+
+	// unknown -> 404
+	req = httptest.NewRequest(http.MethodGet, "/v0/datasources/missing", nil)
+	req.Header.Set("Authorization", "Bearer adm")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("missing ds status = %d, want 404", rec.Code)
+	}
+
+	// non-admin -> 403
+	req = httptest.NewRequest(http.MethodGet, "/v0/datasources/events", nil)
+	req.Header.Set("Authorization", "Bearer rd")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin status = %d, want 403", rec.Code)
+	}
+
+	// registry error -> 500
+	herr := newDSServer(fakeDSReg{err: errors.New("redis down")})
+	req = httptest.NewRequest(http.MethodGet, "/v0/datasources/events", nil)
+	req.Header.Set("Authorization", "Bearer adm")
+	rec = httptest.NewRecorder()
+	herr.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("error status = %d, want 500", rec.Code)
 	}
 }
