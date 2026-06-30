@@ -909,3 +909,84 @@ wwhat next?
 ---
 
 all in parallel
+
+---
+
+<task-notification>
+<task-id>a801f3fb7fde6be9b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Test coverage + APT pruning" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Both parts complete. All 19 packages pass; YAML validates; `go vet` clean; nothing committed or pushed.
+
+## PART 1 — Test coverage
+
+Added four stdlib-`testing` files targeting the lowest-coverage logic-bearing packages. The hinted packages (`pipe`, `deploy`, `clickhouse`, `ratelimit`, `config`) were actually already 78–88%; the real gaps were two 0% packages plus uncovered branches in `pipe`.
+
+Files added (worktree-absolute):
+- `/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a801f3fb7fde6be9b/internal/apierr/apierr_test.go` — the Tinybird error-envelope mapping (ADR 0012): `WriteError`, `WriteErrorWithCode` (asserts `X-DB-Exception-Code` is set on non-zero code and omitted on 0), `WriteJSON` verbatim passthrough, `EncodeJSON`.
+- `/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a801f3fb7fde6be9b/internal/model/model_test.go` — `Token.HasScope` (exact match, ADMIN super-scope, case-sensitivity, empty-scope miss — the auth gate) and `Datasource.QuarantineTable`.
+- `/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a801f3fb7fde6be9b/internal/pipe/registry_test.go` — `NewRegistry`/`Get`/`List` (name-sort)/`Put` (replace-not-duplicate)/`Replace` (atomic swap + defensive input-map copy, the hot-reload path).
+- `/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a801f3fb7fde6be9b/internal/pipe/control_flow_extra_test.go` — `{% if/elif/else %}` paths the existing tests missed: `classifyTag` argument-shape errors (empty tag, elif-no-cond, else-with-cond, end-with-args), `evalCondition` non-boolean-result rejection (injection-safety invariant), full elif/else selection, and nested `{% if %}`.
+
+Coverage before → after (per package):
+
+| package | before | after |
+|---|---|---|
+| internal/apierr | 0.0% | **100.0%** |
+| internal/model | 0.0% | **100.0%** |
+| internal/pipe | 86.7% | **96.0%** |
+
+`auth` (20.9%) was assessed and deliberately skipped: its 0% functions (`Put`/`Validate`/`List`/`Bootstrap`/etc.) all require a live Redis client and are covered by the existing build-tagged integration tests — not reachable by stdlib unit tests without introducing a fake, which would exceed the focused scope.
+
+## PART 2 — APT/RPM pool pruning
+
+File changed: `/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a801f3fb7fde6be9b/.github/workflows/apt-publish.yml`
+
+The keep-2 prune (apt; the rpm block is analogous, grouping on the trailing `.&lt;arch&gt;.rpm`):
+
+```bash
+# ponytail: keep-2 ceiling — retain only the 2 newest versions of each
+# package+arch in the pool BEFORE the index regenerates, so the published
+# Packages references only the kept .debs and the repo can't grow unbounded.
+# Filenames are tinyraven_&lt;ver&gt;_&lt;arch&gt;.deb; version-sort per name+arch, drop the rest.
+pool="$base/pool/main"
+ls -1 "$pool"/*.deb 2&gt;/dev/null | sed 's#.*/##' | awk -F_ 'NF&gt;=3{print $1"_"$3}' | sort -u \
+  | while IFS= read -r key; do
+      name=${key%_*}; archdeb=${key#*_}
+      ls -1 "$pool/${name}_"*"_${archdeb}" 2&gt;/dev/null | sort -V | head -n -2 \
+        | xargs -r rm -vf -- || true
+    done || true
+```
+
+Placed before the `dpkg-scanpackages` loop (apt) and before `createrepo_c` (rpm), so each regenerated index references only kept files. I also added two lines per step that `git fetch`/`git archive` the prior `apt/pool` (and `rpm/*.rpm`) from `origin/gh-pages` into the staging tree — without this the prune is a guaranteed no-op, because the step otherwise rebuilds the pool fresh from only the current tag's two `.deb`s. With the restore, the pool holds the full release history, so keep-2 actually trims it, and the published index/repomd is bounded to the 2 newest versions per package+arch (giving users a rollback-to-N-1 window). Uses only GNU coreutils already present on the runner (`sort -V`, `head -n -2`, `xargs -r`); all pipelines are guarded under the step's `set -euo pipefail`.
+
+Validation: `python3 -c "import yaml;yaml.safe_load(...)"` → `YAML OK`.
+
+One honest caveat worth flagging before this ships: `peaceiris/actions-gh-pages` runs with `keep_files: true` (intentionally, to avoid clobbering Helm's root `index.yaml`). `keep_files: true` never *deletes* from the remote branch — so this change reliably bounds the **published index** and the locally-managed tree, but the older `.deb`/`.rpm` blobs already on gh-pages will linger on disk. Fully reclaiming that remote storage requires a scoped mirror of just the `apt/`+`rpm/` subtrees (so deletions propagate without touching the concurrently-updated Helm files) — a larger, riskier change to the publish step that I deliberately did not make under the "smallest correct change" mandate. Recommend it as a separate follow-up.
+
+`go test ./...` tail:
+```
+ok  github.com/tinyraven/tinyraven/internal/model      4.741s
+ok  github.com/tinyraven/tinyraven/internal/openapi    4.746s
+ok  github.com/tinyraven/tinyraven/internal/pipe       4.726s
+ok  github.com/tinyraven/tinyraven/internal/pipestats  4.665s
+ok  github.com/tinyraven/tinyraven/internal/ratelimit  4.694s
+ok  github.com/tinyraven/tinyraven/internal/sqlproxy   4.712s
+?   github.com/tinyraven/tinyraven/scripts/loadtest    [no test files]
+?   github.com/tinyraven/tinyraven/scripts/querybench  [no test files]
+```
+All packages `ok`; `go vet` on the three touched packages exits 0.</result>
+<usage><subagent_tokens>212818</subagent_tokens><tool_uses>27</tool_uses><duration_ms>647081</duration_ms></usage>
+<worktree><worktreePath>/Users/jobinlawrance/Project/tiny/.claude/worktrees/agent-a801f3fb7fde6be9b</worktreePath><worktreeBranch>worktree-agent-a801f3fb7fde6be9b</worktreeBranch></worktree>
+</task-notification>
+
+---
+
+REDACTED
+
+---
+
+added, do others in parallel

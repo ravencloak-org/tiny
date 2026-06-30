@@ -3,9 +3,9 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "8800a864-e1cb-4d13-9744-9d16ef2a83c7",
   "strategy": "manual-commit",
-  "created_at": "2026-06-30T10:49:52.326717Z",
+  "created_at": "2026-06-30T13:02:39.351887Z",
   "branch": "main",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     ".coderabbit.yaml",
     ".env.example",
@@ -21,6 +21,7 @@
     "HANDOFF.md",
     "MILESTONE.md",
     "PROMPT.md",
+    "charts/tinyraven/Chart.yaml",
     "cmd/tr/deploy.go",
     "cmd/tr/local.go",
     "cmd/tr/login.go",
@@ -80,23 +81,23 @@
     "site/next.config.ts"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "ef451bcf-4079-49da-81b7-07a0ea3da71d",
-  "checkpoint_transcript_start": 5924,
-  "transcript_lines_at_start": 5924,
+  "transcript_identifier_at_start": "01dcf6e7-4959-4c78-9f2c-7f9c34bfab48",
+  "checkpoint_transcript_start": 6305,
+  "transcript_lines_at_start": 6305,
   "token_usage": {
-    "input_tokens": 22245,
-    "cache_creation_tokens": 1011646,
-    "cache_read_tokens": 6180923,
-    "output_tokens": 40642,
-    "api_call_count": 31
+    "input_tokens": 6610,
+    "cache_creation_tokens": 305114,
+    "cache_read_tokens": 8392903,
+    "output_tokens": 36608,
+    "api_call_count": 33
   },
   "initial_attribution": {
-    "calculated_at": "2026-06-30T10:49:51.587653Z",
-    "agent_lines": 110,
-    "human_added": 794,
-    "human_modified": 5,
+    "calculated_at": "2026-06-30T13:02:38.566921Z",
+    "agent_lines": 0,
+    "human_added": 1024,
+    "human_modified": 32,
     "human_removed": 0,
-    "total_committed": 909,
-    "agent_percentage": 12.101210121012102
+    "total_committed": 1024,
+    "agent_percentage": 0
   }
 }

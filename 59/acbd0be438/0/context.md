@@ -413,3 +413,21 @@ wwhat next?
 
 all in parallel
 
+### Prompt 86
+
+<task-notification>
+<task-id>a801f3fb7fde6be9b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Test coverage + APT pruning" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message ...
+
+### Prompt 87
+
+REDACTED
+
+### Prompt 88
+
+added, do others in parallel
+

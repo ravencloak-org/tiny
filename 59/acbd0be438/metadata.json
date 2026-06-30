@@ -3,7 +3,7 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     ".coderabbit.yaml",
     ".env.example",
@@ -19,6 +19,7 @@
     "HANDOFF.md",
     "MILESTONE.md",
     "PROMPT.md",
+    "charts/tinyraven/Chart.yaml",
     "cmd/tr/deploy.go",
     "cmd/tr/local.go",
     "cmd/tr/login.go",
@@ -87,10 +88,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 22245,
-    "cache_creation_tokens": 1011646,
-    "cache_read_tokens": 6180923,
-    "output_tokens": 40642,
-    "api_call_count": 31
+    "input_tokens": 6610,
+    "cache_creation_tokens": 305114,
+    "cache_read_tokens": 8392903,
+    "output_tokens": 36608,
+    "api_call_count": 33
   }
 }
