@@ -453,3 +453,151 @@ PR #134 updated (not closed); issue #128 untouched. The split resolves the earli
 ---
 
 go
+
+---
+
+<task-notification>
+<task-id>a810cb4ba36baa24a</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #120 identity foundation" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Done. Increment complete, tests green, draft PR open.
+
+## Files added (all under `server/`)
+**Main (`src/main/kotlin/identity/`)**
+- `Ed25519Verifier.kt` — JDK-native verify util
+- `IdentityModels.kt` — request/response DTOs
+- `IdentityAccountRepository.kt` — Exposed repo (find/create by publicKey)
+- `ChallengeStore.kt` — `ChallengeStore` interface + `RedisChallengeStore` (single-use nonce)
+- `IdentityService.kt` — register / challenge / verify logic + `IdentityError`
+- `IdentityRoutes.kt` — `/identity/{register,challenge,verify}`
+
+**Schema / wiring (edits)**
+- `resources/db/migration/V15__identity_accounts.sql` — new table
+- `db/Tables.kt` — `IdentityAccounts` Exposed mirror
+- `koin/Modules.kt` + `Koin.kt` — `identityModule` (reuses TokenService + Redis)
+- `Routing.kt` — mounts `identityRoutes` alongside `authRoutes`
+
+**Tests (`src/test/kotlin/identity/`)**
+- `Ed25519TestIdentity.kt`, `Ed25519VerifierTest.kt`, `IdentityServiceTest.kt`
+
+## Ed25519 approach — confirmed JDK-native, no BC
+`java.security` only: `Signature.getInstance("Ed25519")` + `KeyFactory` decoding the raw 32-byte key wrapped in the fixed Ed25519 SPKI DER prefix via `X509EncodedKeySpec`. **No Bouncy Castle, zero new dependencies** (JVM 21, JEP 339).
+
+## Test result
+`./gradlew :server:test` → **BUILD SUCCESSFUL, 37 tests, 0 failures.** Coverage: Ed25519 verify happy/tampered/wrong-key/wrong-msg/malformed; register new+idempotent+bad-sig; challenge→verify happy/replay/bad-sig/unknown-challenge/unregistered-key.
+
+## PR
+Draft: **https://github.com/viewrr/viewrr/pull/135** — base `main`, milestone "P2P / Self-Custody Re-architecture", refs #120. Issue **not** closed.
+
+## Honest status
+**This increment covers:** the server-side identity seam only — an account table keyed by Ed25519 publicKey, a register endpoint (signature-gated, idempotent), and challenge-response auth that reuses the app's *existing* JWT/refresh session (`TokenService`) — proving key ownership without Keycloak. It runs strictly **alongside** Keycloak; nothing existing was removed.
+
+**Deliberate simplifications (ponytail-noted in code):** publicKey stored as hex TEXT not BYTEA; identities are non-admin (no key→admin path yet); `/identity/verify` echoes the `challenge` in its body (vs the issue's bare `{publicKey,signature}` sketch) so the nonce can be bound + single-use-consumed statelessly.
+
+**Remaining for #120 (separate follow-ups, not touched here):** Keycloak/OAuth retirement (#112/#114/#115), the client mnemonic→keypair UI (mobile/web repos), and Noise transport auth for the P2P layer.
+
+One caveat worth flagging: the register/verify endpoints and the Exposed repo compile and are unit-tested with fakes, but the actual Postgres round-trip (real `insertAndGetId` against `identity_accounts`) and the live Redis nonce path are **not** exercised by an integration test in this increment — the repo suite is pure-unit by existing convention. That's the honest ceiling on "green."</result>
+<usage><subagent_tokens>241143</subagent_tokens><tool_uses>53</tool_uses><duration_ms>596581</duration_ms></usage>
+</task-notification>
+
+---
+
+use https://rss.app/feeds/v1.1/XuBRUTnUaoC0nSUx.json for adding reviews and look for other review site rss feeds to fetch reviews of movie and display star rating icons in the movie thumbnail
+
+---
+
+yes, but what about reviews from lensman, rediff, times, nyt, washington, hollwood reporter,filmcompanion etc
+
+---
+
+cool
+
+---
+
+<task-notification>
+<task-id>a305e1ca09a0032d7</task-id>
+<tool-use-id>toolu_01B26PwsXPhoiTe9BMTK25Qx</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Editorial reviews ingest subsystem" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>You've hit your session limit · resets 12:10am (Asia/Calcutta)</result>
+<usage><subagent_tokens>90</subagent_tokens><tool_uses>7</tool_uses><duration_ms>158980</duration_ms></usage>
+</task-notification>
+
+---
+
+continue
+
+---
+
+review the pr when it lands using ponytail
+
+---
+
+merge the finished PRs
+
+---
+
+<task-notification>
+<task-id>a1750efc154f43051</task-id>
+<tool-use-id>toolu_01BvVmrXthri6Q4tqvAkxNLq</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Editorial reviews ingest subsystem" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Now the backfill route update block. Let me find its exact text:</result>
+<usage><subagent_tokens>237352</subagent_tokens><tool_uses>56</tool_uses><duration_ms>742040</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a1750efc154f43051</task-id>
+<tool-use-id>toolu_01FbDAzrrKSj5rWVq2JbUuZD</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Editorial reviews ingest subsystem" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Done. Base=main, milestone=null, tree clean. Everything shipped.
+
+---
+
+**EDITORIAL INGEST — SHIPPED**
+
+**Migration:** renamed V14 → **V16__editorial.sql** (dodged the merged `V14__deindex_moderation` + reserved V15/#120). Code comments updated too.
+
+**Feeds — live vs dead:**
+- LIVE (verified reachable + feed-shaped): **Hollywood Reporter** (JSON, known-good), **RogerEbert.com**, **Film Companion**, **Rediff Movies**.
+- DISABLED w/ notes in `feeds.json`: NYT + Times of India (host refused our fetch — unverified), Variety + IndieWire (Tollbit bot-wall, 307), Washington Post (403).
+- **Lensman: FLAGGED** — named in brief, no URL known, not guessed. Left disabled with a note.
+- Adding an outlet = editing `feeds.json`, not code.
+
+**Tables:** `movie_reviews`(media_item_id, outlet, url, published_at, snippet, parsed_rating NULL, match_score) + `movie_highlights`(media_item_id, type, label, source_url, date). Idempotent via unique keys. Exposed mirrors in `db/Tables.kt`.
+
+**Endpoints:** `GET /media/{id}/reviews` → `{reviews, highlights}` (authed); `POST /admin/editorial/refresh` (admin, manual — no cron framework, none to reuse).
+
+**TMDB star:** was **not stored** before. `TmdbClient` now parses `vote_average`/`vote_count` → `media_items.tmdb_vote_average`/`tmdb_vote_count` (V16), populated on scan + `backfill-tmdb`, exposed on `GET /media` + `/media/{id}`.
+
+**Deps added: ZERO.** JDK `java.net.http` + `javax.xml` DOM + existing kotlinx.serialization only. `build.gradle.kts` untouched.
+
+**Tests:** `./gradlew :server:test` → **44 tests, 0 failures.** Classifier, fuzzy matcher (match/no-match + extraction), JSON+XML inline fixtures, config parse, H2 in-memory R2DBC repo test (store/dedup/read). No live network in tests.
+
+**PR:** https://github.com/viewrr/viewrr/pull/136 (base `main`, no milestone).
+
+**Honest ceiling:** fuzzy match is a heuristic — solid on `'Title' Review` headlines, misses creative phrasing, can't split same-title remakes without a year (tuned for precision, threshold 0.6). Paywalled/bot-walled outlets = link-only; most feeds carry no machine rating so `parsed_rating` is usually null. Refresh is manual — wire an external cron/arr hook for periodic ingest.
+
+Key files: `server/src/main/kotlin/editorial/` (7 files), `server/src/main/resources/editorial/feeds.json`, `server/src/main/resources/db/migration/V16__editorial.sql`, `server/src/test/kotlin/editorial/` (5 test files).</result>
+<usage><subagent_tokens>282325</subagent_tokens><tool_uses>24</tool_uses><duration_ms>435863</duration_ms></usage>
+</task-notification>
+
+---
+
+yes
+
+---
+
+go
