@@ -3,42 +3,30 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "ba164d76-ad07-4ce5-b0f5-c0e229ae6f6c",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T19:42:17.078249Z",
+  "created_at": "2026-07-01T20:06:52.058054Z",
   "branch": "main",
-  "checkpoints_count": 0,
+  "checkpoints_count": 2,
   "files_touched": [
-    "files (1)/CONTEXT.md",
-    "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
-    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
-    "files (1)/docs/adr/0003-bare-worklet-embedding-per-platform.md",
-    "files (1)/docs/adr/0004-ownership-model-not-rental.md",
-    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
-    "files (1)/docs/adr/0006-private-discovery-topics-and-pairing.md",
-    "files (1)/docs/adr/0007-single-crypto-stack-libsodium-in-worklet.md",
-    "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md",
-    "files (1)/docs/adr/0009-peer-selection-proximity-uplink.md",
-    "files (1)/docs/adr/0010-operator-power-deindex-only-no-backdoor.md",
-    "files (1)/docs/adr/0011-multi-device-storage-pool.md",
-    "files (1)/docs/adr/0012-no-device-fingerprinting.md"
+    "cmd/tr/local.go"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "5cd18b3e-46fb-474a-af80-4b0dceeb5ad0",
-  "checkpoint_transcript_start": 1107,
-  "transcript_lines_at_start": 1107,
+  "transcript_identifier_at_start": "71f9977e-49c1-435e-8cf0-595967d78edc",
+  "checkpoint_transcript_start": 1764,
+  "transcript_lines_at_start": 1764,
   "token_usage": {
-    "input_tokens": 6244,
-    "cache_creation_tokens": 547922,
-    "cache_read_tokens": 26581169,
-    "output_tokens": 64404,
-    "api_call_count": 60
+    "input_tokens": 6278,
+    "cache_creation_tokens": 1059950,
+    "cache_read_tokens": 11533073,
+    "output_tokens": 19987,
+    "api_call_count": 26
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T19:42:16.918058Z",
-    "agent_lines": 0,
-    "human_added": 58,
-    "human_modified": 111,
+    "calculated_at": "2026-07-01T20:06:51.88113Z",
+    "agent_lines": 32,
+    "human_added": 0,
+    "human_modified": 0,
     "human_removed": 0,
-    "total_committed": 169,
-    "agent_percentage": 0
+    "total_committed": 32,
+    "agent_percentage": 100
   }
 }

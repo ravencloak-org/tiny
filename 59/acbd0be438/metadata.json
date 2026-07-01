@@ -3,24 +3,11 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 5,
+  "checkpoints_count": 7,
   "files_touched": [
     "cmd/tr/deploy.go",
     "cmd/tr/local.go",
     "cmd/tr/local_test.go",
-    "files (1)/CONTEXT.md",
-    "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
-    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
-    "files (1)/docs/adr/0003-bare-worklet-embedding-per-platform.md",
-    "files (1)/docs/adr/0004-ownership-model-not-rental.md",
-    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
-    "files (1)/docs/adr/0006-private-discovery-topics-and-pairing.md",
-    "files (1)/docs/adr/0007-single-crypto-stack-libsodium-in-worklet.md",
-    "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md",
-    "files (1)/docs/adr/0009-peer-selection-proximity-uplink.md",
-    "files (1)/docs/adr/0010-operator-power-deindex-only-no-backdoor.md",
-    "files (1)/docs/adr/0011-multi-device-storage-pool.md",
-    "files (1)/docs/adr/0012-no-device-fingerprinting.md",
     "internal/openapi/openapi.go",
     "internal/openapi/openapi_test.go",
     "site/app/layout.tsx",
@@ -58,10 +45,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 31799,
-    "cache_creation_tokens": 2366534,
-    "cache_read_tokens": 53976309,
-    "output_tokens": 127661,
-    "api_call_count": 148
+    "input_tokens": 31833,
+    "cache_creation_tokens": 2878562,
+    "cache_read_tokens": 38928213,
+    "output_tokens": 83244,
+    "api_call_count": 114
   }
 }

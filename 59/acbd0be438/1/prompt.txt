@@ -601,3 +601,27 @@ yes
 ---
 
 go
+
+---
+
+tr local stop hangs like how start hung up, let's show docker logs when stopping so that we are aware what is happening. does using opentui help here?
+
+---
+
+check now
+
+---
+
+Continue from where you left off.
+
+---
+
+continue
+
+---
+
+test live
+
+---
+
+go

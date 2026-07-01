@@ -286,3 +286,27 @@ yes
 
 go
 
+### Prompt 55
+
+tr local stop hangs like how start hung up, let's show docker logs when stopping so that we are aware what is happening. does using opentui help here?
+
+### Prompt 56
+
+check now
+
+### Prompt 57
+
+Continue from where you left off.
+
+### Prompt 58
+
+continue
+
+### Prompt 59
+
+test live
+
+### Prompt 60
+
+go
+
