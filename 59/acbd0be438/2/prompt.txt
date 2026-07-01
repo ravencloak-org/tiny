@@ -11,3 +11,12 @@ file the deploy bug
 ---
 
 no deploy it in our dokploy in vps and add a marketing page for the usecases
+
+---
+
+<task-notification>
+<task-id>bwoimpw75</task-id>
+<summary>Monitor event: "v0.3.3 release+deploy run"</summary>
+<event>release run: completed success</event>
+If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+</task-notification>

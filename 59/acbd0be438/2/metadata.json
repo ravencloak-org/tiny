@@ -3,39 +3,31 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "c651ee02-cf8b-46ac-af2c-803058706c9a",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T15:02:35.102593Z",
+  "created_at": "2026-07-01T15:10:05.281448Z",
   "branch": "main",
-  "checkpoints_count": 3,
+  "checkpoints_count": 1,
   "files_touched": [
-    "CHANGELOG.md",
-    "examples/dashboards-demo/README.md",
-    "examples/dashboards-demo/run.sh",
-    "examples/dashboards-demo/sample-events.ndjson",
-    "examples/dashboards-demo/top_pages.pipe",
-    "examples/dashboards-demo/views_over_time.pipe",
-    "examples/dashboards-demo/web_events.datasource",
-    "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
-    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
-    "files (1)/docs/adr/0003-bare-worklet-embedding-per-platform.md",
-    "site/app/use-cases/page.tsx",
-    "site/components/site/nav.tsx",
-    "site/components/site/use-cases.tsx"
+    "site/Dockerfile",
+    "site/nginx.conf"
   ],
   "agent": "Claude Code",
+  "transcript_identifier_at_start": "9cbbd674-f376-4b57-8f7c-0fef7a5a96df",
+  "checkpoint_transcript_start": 406,
+  "transcript_lines_at_start": 406,
   "token_usage": {
-    "input_tokens": 19908,
-    "cache_creation_tokens": 743191,
-    "cache_read_tokens": 11483131,
-    "output_tokens": 49058,
-    "api_call_count": 55
+    "input_tokens": 4691,
+    "cache_creation_tokens": 13202,
+    "cache_read_tokens": 2609215,
+    "output_tokens": 6985,
+    "api_call_count": 10
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T15:02:35.063777Z",
-    "agent_lines": 448,
-    "human_added": 0,
+    "calculated_at": "2026-07-01T15:10:05.234809Z",
+    "agent_lines": 0,
+    "human_added": 21,
     "human_modified": 0,
-    "human_removed": 127,
-    "total_committed": 448,
-    "agent_percentage": 100
+    "human_removed": 0,
+    "total_committed": 21,
+    "agent_percentage": 0
   }
 }
