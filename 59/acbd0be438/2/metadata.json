@@ -3,31 +3,30 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "c651ee02-cf8b-46ac-af2c-803058706c9a",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T15:10:05.281448Z",
+  "created_at": "2026-07-01T15:21:05.917888Z",
   "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
-    "site/Dockerfile",
-    "site/nginx.conf"
+    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "9cbbd674-f376-4b57-8f7c-0fef7a5a96df",
-  "checkpoint_transcript_start": 406,
-  "transcript_lines_at_start": 406,
+  "transcript_identifier_at_start": "4bd63d8c-f0d5-43b7-98cf-199731703493",
+  "checkpoint_transcript_start": 481,
+  "transcript_lines_at_start": 481,
   "token_usage": {
-    "input_tokens": 4691,
-    "cache_creation_tokens": 13202,
-    "cache_read_tokens": 2609215,
-    "output_tokens": 6985,
-    "api_call_count": 10
+    "input_tokens": 952,
+    "cache_creation_tokens": 29732,
+    "cache_read_tokens": 2496007,
+    "output_tokens": 21904,
+    "api_call_count": 9
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T15:10:05.234809Z",
+    "calculated_at": "2026-07-01T15:21:05.862503Z",
     "agent_lines": 0,
-    "human_added": 21,
-    "human_modified": 0,
+    "human_added": 249,
+    "human_modified": 51,
     "human_removed": 0,
-    "total_committed": 21,
+    "total_committed": 298,
     "agent_percentage": 0
   }
 }

@@ -27,3 +27,7 @@ no deploy it in our dokploy in vps and add a marketing page for the usecases
 If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
 </task-notification>
 
+### Prompt 6
+
+check
+
