@@ -31,3 +31,15 @@ If this event is something the user would act on now, send a PushNotification. R
 
 check
 
+### Prompt 7
+
+ssh yourself
+
+### Prompt 8
+
+created
+
+### Prompt 9
+
+ssh -i ~/.ssh/id_ed25519 root@139.84.219.81f
+

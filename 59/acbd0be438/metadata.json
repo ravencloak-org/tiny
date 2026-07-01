@@ -3,13 +3,14 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 3,
+  "checkpoints_count": 4,
   "files_touched": [
-    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
+    "Dockerfile",
     "files (1)/docs/adr/0006-private-discovery-topics-and-pairing.md",
     "files (1)/docs/adr/0007-single-crypto-stack-libsodium-in-worklet.md",
     "internal/openapi/openapi.go",
-    "internal/openapi/openapi_test.go"
+    "internal/openapi/openapi_test.go",
+    "site/components/site/use-cases.tsx"
   ],
   "sessions": [
     {
@@ -35,10 +36,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 6730,
-    "cache_creation_tokens": 88449,
-    "cache_read_tokens": 15500488,
-    "output_tokens": 53152,
-    "api_call_count": 43
+    "input_tokens": 6783,
+    "cache_creation_tokens": 82761,
+    "cache_read_tokens": 18842492,
+    "output_tokens": 49019,
+    "api_call_count": 53
   }
 }
