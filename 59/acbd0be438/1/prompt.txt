@@ -320,3 +320,136 @@ create worktress and use /caveman:caveman and /ponytail:ponytail and work on the
 ---
 
 go for recomended
+
+---
+
+wait for the agents then review and close the done ones
+
+---
+
+<task-notification>
+<task-id>a1108977daef76dc8</task-id>
+<tool-use-id>toolu_01FA68CzgZLsZV55tKoRZbMZ</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #129 no fingerprinting" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Done — doc-only, as expected.
+
+**Grep result:** No fingerprinting code. Only match was `deviceId` in `server/src/main/kotlin/downloads/*` — a client-supplied per-device download-file key, unrelated to fingerprinting. No canvas hashing, no UA/navigator hashing. Nothing to remove.
+
+**Doc written:** `docs/adr/p2p-0012-status.md` (status: rejected). One page: fingerprinting rejected + four reasons (permissionless-identity conflict, privacy-hostile, web-tier-only, evadable), data-layer alternative (TMDB allowlist per #128 / ADR 0002), and the honesty note that no fingerprinting code exists. Matches the repo's existing ADR frontmatter style.
+
+**Commit + push:** committed referencing #129 + P2P-ADR 0012, pushed `p2p/129-no-fingerprint`.
+
+**PR:** https://github.com/viewrr/viewrr/pull/132 — base `main`, milestone "P2P / Self-Custody Re-architecture", references #129, does **not** close the issue.
+
+**Completion status:** done, doc-only. No `needs-human` flag — the expected "no fingerprinting present" case held, so there is no removal candidate and no ambiguity requiring a human.</result>
+<usage><subagent_tokens>158258</subagent_tokens><tool_uses>6</tool_uses><duration_ms>79595</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5135cff133fd2c67</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #123 ownership not rental" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Done.
+
+**What I found:** No revocation-on-lapse logic exists anywhere in viewrr. There is no subscription/entitlement/billing/tier concept at all — not in the schema (`db/Tables.kt`), migrations, or `application.yaml`. Playback (`media/PlaybackRoutes.kt` `GET /playback/{id}`) gates on exactly three things: catalog row exists, parental rating (`isVisible`), and a physical online copy (`db.hasOnlineCopy`). No per-user title entitlement is consulted. The only `revoke` in the tree is the auth refresh-token endpoint and a Stremio API-key `DEL` — neither touches content ownership.
+
+**What I changed:** Doc-only, already satisfied. Added `docs/adr/p2p-0004-status.md` (existing ADR house style) recording the ownership invariant and a guardrail so future subscription/tier work gates new acquisition/perks/storage only and never revokes owned titles. Zero code touched, zero new dependencies. No self-check needed (no real logic written, per the honesty rule).
+
+**PR:** https://github.com/viewrr/viewrr/pull/133 (base `main`, milestone P2P / Self-Custody Re-architecture, refs #123, issue left open).
+
+**Status:** done. The invariant holds vacuously today; the ADR exists so it stays that way. One thing a human should confirm: I set the PR milestone in the body text but did not attach the GitHub milestone object (gh milestone flags weren't used) — attach it in the UI if you want it tracked formally.</result>
+<usage><subagent_tokens>167241</subagent_tokens><tool_uses>11</tool_uses><duration_ms>132443</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a445a52a8c348d22d</task-id>
+<tool-use-id>toolu_01268NUCwNHH65CPnJS3ZyTC</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #128 de-index + TMDB gate" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Done. PR open against `main`, milestone attached, issue #128 left open.
+
+## Files touched
+- `server/src/main/resources/db/migration/V14__deindex_moderation.sql` (new) — Flyway migration
+- `server/src/main/kotlin/db/Tables.kt` — `deindexed` column on `MediaItems`
+- `server/src/main/kotlin/media/MediaModeration.kt` (new) — canonical rule + `publicCatalogOp()`
+- `server/src/main/kotlin/media/MediaListRoutes.kt` — `/media` browse filter
+- `server/src/main/kotlin/media/MediaSearchService.kt` — BM25 search WHERE
+- `server/src/main/kotlin/media/HomeRoutes.kt` — featured/recent/byIds filters
+- `server/src/main/kotlin/stremio/StremioService.kt` — movie/series catalog filters
+- `server/src/main/kotlin/scanner/MediaAdminRoutes.kt` — `POST /admin/media/{id}/deindex`
+- `server/src/test/kotlin/media/MediaModerationTest.kt` (new)
+
+## Migration + filter
+```sql
+ALTER TABLE media_items ADD COLUMN deindexed BOOLEAN NOT NULL DEFAULT false;
+```
+Rule (one predicate, reused everywhere): `!deindexed &amp;&amp; tmdbId != null`.
+- Exposed: `(MediaItems.deindexed eq false) and MediaItems.tmdbId.isNotNull()` via `publicCatalogOp()`
+- Raw BM25 SQL: `AND deindexed = false AND tmdb_id IS NOT NULL`
+
+Applied to discovery surfaces only (browse, search, home rows, Stremio catalog). By-id detail/playback intentionally not gated — hides from catalog without deleting, matching the issue.
+
+## Test result
+`./gradlew :server:test` → BUILD SUCCESSFUL. `MediaModerationTest`: tests=4, failures=0. Full server suite green. (Note: no live Postgres/ParadeDB in the test harness — the self-check asserts the canonical predicate the SQL mirrors, not an integration DB query.)
+
+## PR
+https://github.com/viewrr/viewrr/pull/134
+
+## Honest completion status
+Complete and shippable for the two capabilities as specified. One flagged item needs human confirmation (in the PR body, not blocking): the TMDB allowlist gate will make existing never-TMDB-matched Titles vanish from `/media` browse once V14 ships. That's the literal reading of the issue and correct for a shared/public catalog, but if `/media` is meant to stay the owner's private full-library view, the gate on that one endpoint should be reconsidered. Playback (by id) is unaffected. Marking that decision **needs-human**.</result>
+<usage><subagent_tokens>216842</subagent_tokens><tool_uses>49</tool_uses><duration_ms>595941</duration_ms></usage>
+</task-notification>
+
+---
+
+B — split: TMDB-gate Stremio only
+
+---
+
+close #128 once tests pass
+
+---
+
+<task-notification>
+<task-id>a445a52a8c348d22d</task-id>
+<tool-use-id>toolu_01VtAA3SYArUWKi2fhA2ErDV</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #128 de-index + TMDB gate" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>No live agent channel — the coordinator's message came through the conversation, so I'll return the confirmation directly here.
+
+Done. Option B (split gate) implemented on `p2p/128-deindex`; PR #134 updated (head `2402108`, OPEN). Issue #128 left open for your verification.
+
+## Files changed (commit 2402108)
+- `server/src/main/kotlin/media/MediaModeration.kt` — added `isVisibleToOwner(deindexed) = !deindexed` + `notDeindexedOp()` (owner, de-index only); kept `isPubliclyIndexable(deindexed, tmdbId)` + `publicCatalogOp()` (public, de-index AND TMDB allowlist); doc comment now states the owner/public split and keeps the "three mirrors stay in sync" note.
+- `server/src/main/kotlin/media/MediaListRoutes.kt` — `/media` browse now `notDeindexedOp()`.
+- `server/src/main/kotlin/media/HomeRoutes.kt` — `/home` featured/recent/byIds now `notDeindexedOp()`.
+- `server/src/main/kotlin/media/MediaSearchService.kt` — BM25 WHERE keeps `deindexed = false`, dropped `tmdb_id IS NOT NULL`.
+- `server/src/main/kotlin/stremio/StremioService.kt` — unchanged, still `publicCatalogOp()` (full gate).
+- `server/src/test/kotlin/media/MediaModerationTest.kt` — extended to cover both rules, incl. the split case.
+- `server/src/main/resources/db/migration/V14__deindex_moderation.sql` — comment updated to document the split.
+
+## Test result
+`./gradlew :server:test --rerun-tasks` → BUILD SUCCESSFUL. `MediaModerationTest`: tests=7, failures=0, errors=0. Full server suite green.
+
+## Confirm
+PR #134 updated (not closed); issue #128 untouched. The split resolves the earlier needs-human flag — owners keep their non-TMDB titles; the TMDB allowlist now applies to the public Stremio catalog only. No remaining flags.</result>
+<usage><subagent_tokens>225902</subagent_tokens><tool_uses>15</tool_uses><duration_ms>179617</duration_ms></usage>
+</task-notification>
+
+---
+
+go

@@ -158,3 +158,59 @@ create worktress and use /caveman:caveman and /ponytail:ponytail and work on the
 
 go for recomended
 
+### Prompt 35
+
+wait for the agents then review and close the done ones
+
+### Prompt 36
+
+<task-notification>
+<task-id>a1108977daef76dc8</task-id>
+<tool-use-id>toolu_01FA68CzgZLsZV55tKoRZbMZ</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #129 no fingerprinting" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message...
+
+### Prompt 37
+
+<task-notification>
+<task-id>a5135cff133fd2c67</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #123 ownership not rental" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another mess...
+
+### Prompt 38
+
+<task-notification>
+<task-id>a445a52a8c348d22d</task-id>
+<tool-use-id>toolu_01268NUCwNHH65CPnJS3ZyTC</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #128 de-index + TMDB gate" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another mess...
+
+### Prompt 39
+
+B — split: TMDB-gate Stremio only
+
+### Prompt 40
+
+close #128 once tests pass
+
+### Prompt 41
+
+<task-notification>
+<task-id>a445a52a8c348d22d</task-id>
+<tool-use-id>toolu_01VtAA3SYArUWKi2fhA2ErDV</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Agent "Issue #128 de-index + TMDB gate" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another mess...
+
+### Prompt 42
+
+go
+
