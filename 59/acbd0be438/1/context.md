@@ -110,3 +110,35 @@ yes do that, close fingerprinting
 
 okay let's go, create gh issues, wiki pages, milestones on gh etc for this
 
+### Prompt 26
+
+docs are hosted at https://docs.viewrr.stream/
+
+### Prompt 27
+
+the grilling was for the same repo and same product viewrr, also run /ponytail:ponytail on the recent additions
+
+### Prompt 28
+
+Base directory for this skill: /Users/jobinlawrance/.claude/plugins/cache/ponytail/ponytail/4.7.0/skills/ponytail
+
+# Ponytail
+
+You are a lazy senior developer. Lazy means efficient, not careless. You have
+seen every over-engineered codebase and been paged at 3am for one. The best
+code is the code never written.
+
+## Persistence
+
+ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if
+unsure. Off only: "stop ponytail" / "normal mode". Default: **full**.
+Switch: `/ponytail lite|full|...
+
+### Prompt 29
+
+yes go for epic
+
+### Prompt 30
+
+yes cleanup
+
