@@ -3,7 +3,7 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 4,
+  "checkpoints_count": 5,
   "files_touched": [
     "files (1)/docs/adr/p2p-0001-self-custody-clearkey-no-hardware-drm.md",
     "files (1)/docs/adr/p2p-0002-compose-desktop-libvlc-drop-electron.md",
@@ -70,10 +70,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 10799,
-    "cache_creation_tokens": 543599,
-    "cache_read_tokens": 24878429,
-    "output_tokens": 71608,
-    "api_call_count": 68
+    "input_tokens": 10575,
+    "cache_creation_tokens": 617763,
+    "cache_read_tokens": 26856188,
+    "output_tokens": 81289,
+    "api_call_count": 72
   }
 }

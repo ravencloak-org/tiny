@@ -105,3 +105,30 @@ it's broken [Image #1] use a good charting foss library
 
 [Image: source: /Users/jobinlawrance/.claude/image-cache/c651ee02-cf8b-46ac-af2c-803058706c9a/1.png]
 
+### Prompt 20
+
+<task-notification>
+<task-id>bwp8so7cv</task-id>
+<summary>Monitor event: "v0.3.7 recharts dashboard release"</summary>
+<event>release v0.3.7: completed success</event>
+If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+</task-notification>
+
+### Prompt 21
+
+<task-notification>
+<task-id>bwp8so7cv</task-id>
+<tool-use-id>toolu_012GnXN6Y1rWvRNqwxXcF7ou</tool-use-id>
+<output-file>REDACTED.output</output-file>
+<status>completed</status>
+<summary>Monitor "v0.3.7 recharts dashboard release" stream ended</summary>
+</task-notification>
+
+### Prompt 22
+
+its still broken, use the ui library i told you
+
+### Prompt 23
+
+looks good, what else is pending? are we good on benchmarks like p99 etc
+
