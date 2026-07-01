@@ -3,31 +3,32 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "ba164d76-ad07-4ce5-b0f5-c0e229ae6f6c",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T15:33:12.557648Z",
+  "created_at": "2026-07-01T15:38:16.57309Z",
   "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
-    "files (1)/docs/adr/0006-private-discovery-topics-and-pairing.md",
-    "files (1)/docs/adr/0007-single-crypto-stack-libsodium-in-worklet.md"
+    "files (1)/CONTEXT.md",
+    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
+    "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "349135f5-b985-48a8-99bc-05caf8f0cf70",
-  "checkpoint_transcript_start": 264,
-  "transcript_lines_at_start": 264,
+  "transcript_identifier_at_start": "94dcc919-ec32-4530-9b68-6eaf6a8c5d7a",
+  "checkpoint_transcript_start": 318,
+  "transcript_lines_at_start": 318,
   "token_usage": {
-    "input_tokens": 717,
-    "cache_creation_tokens": 10667,
-    "cache_read_tokens": 1228997,
-    "output_tokens": 10969,
-    "api_call_count": 5
+    "input_tokens": 275,
+    "cache_creation_tokens": 4429,
+    "cache_read_tokens": 1026213,
+    "output_tokens": 6125,
+    "api_call_count": 4
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T15:33:12.510484Z",
+    "calculated_at": "2026-07-01T15:38:16.527298Z",
     "agent_lines": 0,
     "human_added": 0,
-    "human_modified": 53,
-    "human_removed": 24,
-    "total_committed": 53,
+    "human_modified": 26,
+    "human_removed": 145,
+    "total_committed": 26,
     "agent_percentage": 0
   }
 }

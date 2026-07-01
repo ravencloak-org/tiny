@@ -70,3 +70,7 @@ why not pgbouncer, it's for hikaricp. also why no catalogue, we need a central c
 
 also why no timescale db, since clickhouse is olap db we can use timescale db to cache any timescale data for faster returns right? most of these timescale db doesnt change just keeps on appending like WAL
 
+### Prompt 16
+
+my bad, proceed with central catalogue, viewrr is primarily a svod, so users should be able to use it as an alternative for netflix and others. so everything downloaded by everyone in the p2p mesh should contribute to the central catalgoue that the whole point, no central media server, decentralized media files, centralized catalgoue search powered by paradedb
+

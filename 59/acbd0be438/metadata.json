@@ -6,8 +6,11 @@
   "checkpoints_count": 4,
   "files_touched": [
     "Dockerfile",
+    "files (1)/CONTEXT.md",
+    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
     "files (1)/docs/adr/0006-private-discovery-topics-and-pairing.md",
     "files (1)/docs/adr/0007-single-crypto-stack-libsodium-in-worklet.md",
+    "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md",
     "internal/openapi/openapi.go",
     "internal/openapi/openapi_test.go",
     "site/components/site/use-cases.tsx"
@@ -36,10 +39,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 6783,
-    "cache_creation_tokens": 82761,
-    "cache_read_tokens": 18842492,
-    "output_tokens": 49019,
-    "api_call_count": 53
+    "input_tokens": 6341,
+    "cache_creation_tokens": 76523,
+    "cache_read_tokens": 18639708,
+    "output_tokens": 44175,
+    "api_call_count": 52
   }
 }
