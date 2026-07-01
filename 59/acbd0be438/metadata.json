@@ -3,14 +3,24 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 5,
+  "checkpoints_count": 8,
   "files_touched": [
+    "CHANGELOG.md",
+    "examples/dashboards-demo/README.md",
+    "examples/dashboards-demo/run.sh",
+    "examples/dashboards-demo/sample-events.ndjson",
+    "examples/dashboards-demo/top_pages.pipe",
+    "examples/dashboards-demo/views_over_time.pipe",
+    "examples/dashboards-demo/web_events.datasource",
     "files (1)/CONTEXT.md",
     "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
     "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
     "files (1)/docs/adr/0003-bare-worklet-embedding-per-platform.md",
     "internal/openapi/openapi.go",
-    "internal/openapi/openapi_test.go"
+    "internal/openapi/openapi_test.go",
+    "site/app/use-cases/page.tsx",
+    "site/components/site/nav.tsx",
+    "site/components/site/use-cases.tsx"
   ],
   "sessions": [
     {
@@ -26,13 +36,20 @@
       "context": "/59/acbd0be438/1/context.md",
       "content_hash": "/59/acbd0be438/1/content_hash.txt",
       "prompt": "/59/acbd0be438/1/prompt.txt"
+    },
+    {
+      "metadata": "/59/acbd0be438/2/metadata.json",
+      "transcript": "/59/acbd0be438/2/full.jsonl",
+      "context": "/59/acbd0be438/2/context.md",
+      "content_hash": "/59/acbd0be438/2/content_hash.txt",
+      "prompt": "/59/acbd0be438/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 23643,
-    "cache_creation_tokens": 704321,
-    "cache_read_tokens": 15136283,
-    "output_tokens": 44347,
-    "api_call_count": 48
+    "input_tokens": 43551,
+    "cache_creation_tokens": 1447512,
+    "cache_read_tokens": 26619414,
+    "output_tokens": 93405,
+    "api_call_count": 103
   }
 }

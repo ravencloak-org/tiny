@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "59acbd0be438",
+  "session_id": "c651ee02-cf8b-46ac-af2c-803058706c9a",
+  "strategy": "manual-commit",
+  "created_at": "2026-07-01T15:02:35.102593Z",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "CHANGELOG.md",
+    "examples/dashboards-demo/README.md",
+    "examples/dashboards-demo/run.sh",
+    "examples/dashboards-demo/sample-events.ndjson",
+    "examples/dashboards-demo/top_pages.pipe",
+    "examples/dashboards-demo/views_over_time.pipe",
+    "examples/dashboards-demo/web_events.datasource",
+    "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
+    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
+    "files (1)/docs/adr/0003-bare-worklet-embedding-per-platform.md",
+    "site/app/use-cases/page.tsx",
+    "site/components/site/nav.tsx",
+    "site/components/site/use-cases.tsx"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 19908,
+    "cache_creation_tokens": 743191,
+    "cache_read_tokens": 11483131,
+    "output_tokens": 49058,
+    "api_call_count": 55
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-07-01T15:02:35.063777Z",
+    "agent_lines": 448,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 127,
+    "total_committed": 448,
+    "agent_percentage": 100
+  }
+}
