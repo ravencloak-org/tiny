@@ -4,6 +4,11 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] — 2026-07-01
+
+### Changed
+- `/use-cases` live dashboard rebuilt on Bklit UI charts (verified locally before deploy): Bklit `BarChart` for top pages, Bklit `AreaChart` (time-based x, fed `Date` values) for views over time. Removed the Recharts detour; fixed the `@bklit/area-chart` install's `shimmering-text` import path.
+
 ## [0.3.7] — 2026-07-01
 
 ### Fixed
