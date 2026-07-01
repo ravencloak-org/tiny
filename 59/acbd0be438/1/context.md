@@ -98,3 +98,15 @@ lock this, backup tier included
 
 also lets use chrome fingerprint to prevent multiple dummy accounts being created
 
+### Prompt 23
+
+right just wanted to avoid spam accounts that poison the catalgue
+
+### Prompt 24
+
+yes do that, close fingerprinting
+
+### Prompt 25
+
+okay let's go, create gh issues, wiki pages, milestones on gh etc for this
+
