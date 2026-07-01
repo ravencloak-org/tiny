@@ -38,7 +38,7 @@ func newLocalCmd() *cobra.Command {
 			db := branch.DBName(b)
 			os.Setenv("TR_CLICKHOUSE_DB", db) // compose interpolates ${TR_CLICKHOUSE_DB}
 			fmt.Printf("→ branch %s -> database %s\n", b, db)
-			return compose(cmd.Context(), "up", "-d")
+			return compose(cmd.Context(), "--progress", "plain", "up", "-d")
 		},
 	}
 	start.Flags().StringVar(&branchFlag, "branch", "",
@@ -55,7 +55,7 @@ func newLocalCmd() *cobra.Command {
 				fmt.Println("→ no Docker daemon reachable; nothing to stop")
 				return nil
 			}
-			return compose(cmd.Context(), "down")
+			return stopStack(cmd.Context())
 		},
 	}
 	local.AddCommand(start, stop)
@@ -70,6 +70,25 @@ func compose(ctx context.Context, args ...string) error {
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
 	return c.Run()
+}
+
+// stopStack brings the compose stack down with visibility.
+//
+// `docker compose down` with no timeout waits indefinitely on a container that is
+// slow to honour SIGTERM (e.g. ClickHouse flushing on shutdown), and its TTY progress
+// renderer freezes on the stuck step — which reads as a silent hang. We: (1) stream the
+// service logs so a slow shutdown is actually visible, (2) force `--progress plain` so
+// each Stopping/Removing step prints line-by-line, and (3) bound it with `--timeout` so
+// a stubborn container is SIGKILLed instead of hanging forever.
+func stopStack(ctx context.Context) error {
+	logsCtx, cancelLogs := context.WithCancel(ctx)
+	defer cancelLogs()
+	go func() {
+		lc := exec.CommandContext(logsCtx, "docker", "compose", "logs", "-f", "--tail", "20")
+		lc.Stdout, lc.Stderr = os.Stdout, os.Stderr
+		_ = lc.Run() // ends when the containers are removed or logsCtx is cancelled
+	}()
+	return compose(ctx, "--progress", "plain", "down", "--timeout", "30")
 }
 
 // provider is which container runtime we'll use to back the Docker daemon.
@@ -129,7 +148,17 @@ func startColima(ctx context.Context) error {
 			"if the VM won't boot (stale lima network/socket), try: colima delete -f && colima start", err)
 	}
 	if !daemonUp(ctx) {
-		return fmt.Errorf("colima started but the Docker daemon is still unreachable")
+		// colima reports "already running" while its docker socket is wedged (VM up,
+		// but the in-VM dockerd / socket-forward is dead). `colima start` no-ops in that
+		// state, so a plain start can't recover it — restart the VM to rebuild the socket.
+		fmt.Println("→ colima is up but the Docker daemon is unreachable; restarting colima…")
+		if err := run(ctx, "colima", "restart"); err != nil {
+			return fmt.Errorf("colima restart failed: %w\n"+
+				"if the VM is wedged, try: colima delete -f && colima start", err)
+		}
+		if !daemonUp(ctx) {
+			return fmt.Errorf("colima restarted but the Docker daemon is still unreachable")
+		}
 	}
 	return nil
 }
