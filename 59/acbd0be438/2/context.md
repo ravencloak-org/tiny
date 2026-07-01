@@ -70,3 +70,11 @@ If this event is something the user would act on now, send a PushNotification. R
 
 yes lets avoid pg for now
 
+### Prompt 14
+
+give me the url
+
+### Prompt 15
+
+why only the json response, why not dashboards or something that is much better looking?
+

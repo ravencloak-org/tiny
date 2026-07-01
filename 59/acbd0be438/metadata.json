@@ -3,14 +3,20 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 4,
+  "checkpoints_count": 3,
   "files_touched": [
-    "docs/adr/0034-no-second-store-caching-via-mv-and-redis.md",
     "files (1)/CONTEXT.md",
     "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
     "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md",
+    "files (1)/docs/adr/0009-peer-selection-proximity-uplink.md",
+    "files (1)/docs/adr/0010-operator-power-deindex-only-no-backdoor.md",
+    "files (1)/docs/adr/0011-multi-device-storage-pool.md",
+    "internal/api/middleware.go",
+    "internal/api/server.go",
     "internal/openapi/openapi.go",
-    "internal/openapi/openapi_test.go"
+    "internal/openapi/openapi_test.go",
+    "site/components/site/live-dashboard.tsx",
+    "site/components/site/use-cases.tsx"
   ],
   "sessions": [
     {
@@ -36,10 +42,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 6203,
-    "cache_creation_tokens": 59660,
-    "cache_read_tokens": 15053891,
-    "output_tokens": 33254,
-    "api_call_count": 40
+    "input_tokens": 6531,
+    "cache_creation_tokens": 77910,
+    "cache_read_tokens": 20703236,
+    "output_tokens": 46960,
+    "api_call_count": 56
   }
 }

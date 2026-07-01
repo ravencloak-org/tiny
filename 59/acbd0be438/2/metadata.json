@@ -3,31 +3,36 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "c651ee02-cf8b-46ac-af2c-803058706c9a",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T15:38:41.222217Z",
+  "created_at": "2026-07-01T15:57:46.93505Z",
   "branch": "main",
-  "checkpoints_count": 2,
+  "checkpoints_count": 1,
   "files_touched": [
-    "docs/adr/0034-no-second-store-caching-via-mv-and-redis.md",
-    "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md"
+    "files (1)/docs/adr/0009-peer-selection-proximity-uplink.md",
+    "files (1)/docs/adr/0010-operator-power-deindex-only-no-backdoor.md",
+    "files (1)/docs/adr/0011-multi-device-storage-pool.md",
+    "internal/api/middleware.go",
+    "internal/api/server.go",
+    "site/components/site/live-dashboard.tsx",
+    "site/components/site/use-cases.tsx"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "0ccf926a-30c7-408f-9bd3-717d238e36a4",
-  "checkpoint_transcript_start": 712,
-  "transcript_lines_at_start": 712,
+  "transcript_identifier_at_start": "881a7bfc-0d76-4dfe-90c2-f245ce782d73",
+  "checkpoint_transcript_start": 794,
+  "transcript_lines_at_start": 794,
   "token_usage": {
-    "input_tokens": 867,
-    "cache_creation_tokens": 7181,
-    "cache_read_tokens": 2252194,
-    "output_tokens": 6850,
-    "api_call_count": 7
+    "input_tokens": 1195,
+    "cache_creation_tokens": 25431,
+    "cache_read_tokens": 7901539,
+    "output_tokens": 20556,
+    "api_call_count": 23
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T15:38:41.150998Z",
-    "agent_lines": 25,
+    "calculated_at": "2026-07-01T15:57:46.84997Z",
+    "agent_lines": 113,
     "human_added": 0,
-    "human_modified": 3,
-    "human_removed": 40,
-    "total_committed": 28,
-    "agent_percentage": 89.28571428571429
+    "human_modified": 50,
+    "human_removed": 97,
+    "total_committed": 163,
+    "agent_percentage": 69.32515337423312
   }
 }
