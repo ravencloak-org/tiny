@@ -59,6 +59,7 @@ func New(deps Deps) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.Recoverer)
+	r.Use(corsMiddleware)
 	if deps.MetricsMiddleware != nil {
 		r.Use(deps.MetricsMiddleware)
 	}

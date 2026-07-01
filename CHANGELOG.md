@@ -4,6 +4,12 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] — 2026-07-01
+
+### Added
+- CORS on the API (`Access-Control-Allow-Origin: *` + preflight short-circuit, `internal/api/middleware.go`) so browser dashboards can read pipe endpoints cross-origin — Tinybird parity (pipes are CORS-open for public read tokens; ADR 0025). Auth unchanged; `*` grants read visibility, not access.
+- `/use-cases` now renders a **live dashboard**: two visx charts (top pages, views over time) that fetch the demo pipes from prod in-browser on load. Replaces the static JSON receipt.
+
 ## [0.3.5] — 2026-07-01
 
 ### Added

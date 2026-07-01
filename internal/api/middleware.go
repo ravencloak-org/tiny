@@ -12,6 +12,25 @@ type ctxKey int
 
 const tokenCtxKey ctxKey = iota
 
+// corsMiddleware makes responses readable cross-origin so browser dashboards
+// can call pipe endpoints directly (Tinybird parity — pipes are CORS-open for
+// public read tokens; ADR 0025). Auth is unchanged: `*` grants read visibility,
+// not access — a valid token is still required. Preflight OPTIONS short-circuits
+// here, before authMiddleware, so it isn't rejected for lacking a token.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // authMiddleware validates the bearer token (or ?token= query param for browser
 // embedding, ADR 0025) against the TokenStore and stashes it in the context.
 func (s *server) authMiddleware(next http.Handler) http.Handler {

@@ -2,7 +2,7 @@ import type { ComponentType, SVGProps } from "react";
 import { cn } from "@/lib/utils";
 import { links } from "@/lib/data";
 import { Button } from "@/components/ui/button";
-import { CodeBlock } from "./code-block";
+import { LiveDashboard } from "./live-dashboard";
 import { SectionHeading } from "./section";
 import {
   ArrowRightIcon,
@@ -115,20 +115,6 @@ function StatusBadge({ status }: { status: Status }) {
   );
 }
 
-// Real receipt from examples/dashboards-demo (ClickHouse 26.6, TinyRaven v0.3.2).
-const receipt = [
-  { text: "# ingest 300 web events — Tinybird-identical call", variant: "comment" as const },
-  { text: '$ curl -X POST ".../v0/events?name=web_events" \\', variant: "default" as const },
-  { text: '    --data-binary @events.ndjson', variant: "default" as const },
-  { text: '{"quarantined_rows":0,"successful_rows":300}', variant: "added" as const },
-  { text: "", variant: "default" as const },
-  { text: '# the dashboard\'s "top pages" widget', variant: "comment" as const },
-  { text: '$ curl ".../v0/pipes/top_pages.json?limit=5"', variant: "default" as const },
-  { text: '{"data":[', variant: "added" as const },
-  { text: '  {"path":"/blog/launch","views":82,"visitors":49},', variant: "added" as const },
-  { text: '  {"path":"/","views":78,"visitors":52}, ... ],', variant: "added" as const },
-  { text: '  "rows":5,"rows_before_limit_at_least":6}', variant: "added" as const },
-];
 
 // Live prod endpoints, read-only demo token (scope: READ:top_pages,
 // READ:views_over_time — verified 403 on anything else). Public by design.
@@ -175,7 +161,7 @@ export function UseCases() {
       </div>
 
       {/* Dashboards spotlight — proof, not promise */}
-      <div className="mt-20 grid items-center gap-10 rounded-2xl border border-white/10 bg-white/[0.02] p-8 lg:grid-cols-2 lg:p-12">
+      <div className="mt-20 rounded-2xl border border-white/10 bg-white/[0.02] p-8 lg:p-12">
         <div>
           <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/20">
             Demonstrated
@@ -241,7 +227,9 @@ export function UseCases() {
             </Button>
           </div>
         </div>
-        <CodeBlock label="dashboards-demo — real output" lines={receipt} />
+        <div className="mt-10">
+          <LiveDashboard />
+        </div>
       </div>
     </section>
   );
