@@ -3,8 +3,12 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 5,
   "files_touched": [
+    "files (1)/CONTEXT.md",
+    "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
+    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
+    "files (1)/docs/adr/0003-bare-worklet-embedding-per-platform.md",
     "internal/openapi/openapi.go",
     "internal/openapi/openapi_test.go"
   ],
@@ -15,13 +19,20 @@
       "context": "/59/acbd0be438/0/context.md",
       "content_hash": "/59/acbd0be438/0/content_hash.txt",
       "prompt": "/59/acbd0be438/0/prompt.txt"
+    },
+    {
+      "metadata": "/59/acbd0be438/1/metadata.json",
+      "transcript": "/59/acbd0be438/1/full.jsonl",
+      "context": "/59/acbd0be438/1/context.md",
+      "content_hash": "/59/acbd0be438/1/content_hash.txt",
+      "prompt": "/59/acbd0be438/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 5061,
-    "cache_creation_tokens": 48050,
-    "cache_read_tokens": 11775484,
-    "output_tokens": 20279,
-    "api_call_count": 29
+    "input_tokens": 23643,
+    "cache_creation_tokens": 704321,
+    "cache_read_tokens": 15136283,
+    "output_tokens": 44347,
+    "api_call_count": 48
   }
 }
