@@ -3,31 +3,32 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "ba164d76-ad07-4ce5-b0f5-c0e229ae6f6c",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T15:01:26.45066Z",
+  "created_at": "2026-07-01T15:20:36.420732Z",
   "branch": "main",
-  "checkpoints_count": 4,
+  "checkpoints_count": 2,
   "files_touched": [
     "files (1)/CONTEXT.md",
-    "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
-    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
-    "files (1)/docs/adr/0003-bare-worklet-embedding-per-platform.md"
+    "files (1)/docs/adr/0004-ownership-model-not-rental.md",
+    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "23a4edcb-b681-45df-a8de-205680010ccf",
+  "transcript_identifier_at_start": "0fcf73ad-1db7-4b83-aa35-50ad172f7e82",
+  "checkpoint_transcript_start": 202,
+  "transcript_lines_at_start": 202,
   "token_usage": {
-    "input_tokens": 18582,
-    "cache_creation_tokens": 656271,
-    "cache_read_tokens": 3360799,
-    "output_tokens": 24068,
-    "api_call_count": 19
+    "input_tokens": 762,
+    "cache_creation_tokens": 9082,
+    "cache_read_tokens": 1638950,
+    "output_tokens": 10745,
+    "api_call_count": 7
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T15:01:26.413968Z",
+    "calculated_at": "2026-07-01T15:20:36.382244Z",
     "agent_lines": 0,
-    "human_added": 7397,
-    "human_modified": 166,
+    "human_added": 158,
+    "human_modified": 163,
     "human_removed": 0,
-    "total_committed": 7563,
+    "total_committed": 321,
     "agent_percentage": 0
   }
 }

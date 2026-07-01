@@ -3,12 +3,11 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 6,
+  "checkpoints_count": 4,
   "files_touched": [
     "files (1)/CONTEXT.md",
-    "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
-    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
-    "files (1)/docs/adr/0003-bare-worklet-embedding-per-platform.md",
+    "files (1)/docs/adr/0004-ownership-model-not-rental.md",
+    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
     "internal/openapi/openapi.go",
     "internal/openapi/openapi_test.go",
     "site/Dockerfile",
@@ -38,10 +37,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 28334,
-    "cache_creation_tokens": 717523,
-    "cache_read_tokens": 17745498,
-    "output_tokens": 51332,
-    "api_call_count": 58
+    "input_tokens": 10514,
+    "cache_creation_tokens": 70334,
+    "cache_read_tokens": 16023649,
+    "output_tokens": 38009,
+    "api_call_count": 46
   }
 }

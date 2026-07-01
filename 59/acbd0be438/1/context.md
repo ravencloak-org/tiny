@@ -46,3 +46,15 @@ compose desktop
 
 yes
 
+### Prompt 10
+
+go for recommended
+
+### Prompt 11
+
+no lets go for option two only, the platform is not responsible for the legal rights of the ones hosting the files, it's anywy encrypted to username and no pii is leaked. just like torrent. in later paid hosting, we can have channels like youtube that can host their own media like music (soundcloud) or movies (dailymotion) but just a decentralized private stash
+
+### Prompt 12
+
+confirm all
+
