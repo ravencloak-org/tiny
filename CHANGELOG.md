@@ -4,6 +4,11 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] — 2026-07-01
+
+### Fixed
+- Marketing site nginx now serves Next static-export subroutes: `try_files $uri $uri.html` returns `/use-cases.html` for `/use-cases` instead of a dir 301 → 403 (the redirect also dropped https→http behind Cloudflare). Home page was unaffected.
+
 ## [0.3.3] — 2026-07-01
 
 ### Added
