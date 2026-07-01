@@ -3,33 +3,31 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "c651ee02-cf8b-46ac-af2c-803058706c9a",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T15:34:29.688912Z",
+  "created_at": "2026-07-01T15:38:41.222217Z",
   "branch": "main",
   "checkpoints_count": 2,
   "files_touched": [
-    "Dockerfile",
-    "files (1)/docs/adr/0006-private-discovery-topics-and-pairing.md",
-    "files (1)/docs/adr/0007-single-crypto-stack-libsodium-in-worklet.md",
-    "site/components/site/use-cases.tsx"
+    "docs/adr/0034-no-second-store-caching-via-mv-and-redis.md",
+    "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "443e2acd-0cde-4328-82e4-30930cd59700",
-  "checkpoint_transcript_start": 563,
-  "transcript_lines_at_start": 563,
+  "transcript_identifier_at_start": "0ccf926a-30c7-408f-9bd3-717d238e36a4",
+  "checkpoint_transcript_start": 712,
+  "transcript_lines_at_start": 712,
   "token_usage": {
-    "input_tokens": 1005,
-    "cache_creation_tokens": 24044,
-    "cache_read_tokens": 5838011,
-    "output_tokens": 17771,
-    "api_call_count": 19
+    "input_tokens": 867,
+    "cache_creation_tokens": 7181,
+    "cache_read_tokens": 2252194,
+    "output_tokens": 6850,
+    "api_call_count": 7
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T15:34:29.6245Z",
-    "agent_lines": 47,
+    "calculated_at": "2026-07-01T15:38:41.150998Z",
+    "agent_lines": 25,
     "human_added": 0,
-    "human_modified": 6,
-    "human_removed": 71,
-    "total_committed": 53,
-    "agent_percentage": 88.67924528301887
+    "human_modified": 3,
+    "human_removed": 40,
+    "total_committed": 28,
+    "agent_percentage": 89.28571428571429
   }
 }
