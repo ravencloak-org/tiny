@@ -3,31 +3,33 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "c651ee02-cf8b-46ac-af2c-803058706c9a",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T17:12:02.640461Z",
+  "created_at": "2026-07-01T17:32:44.22522Z",
   "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
-    "site/components/site/benchmark.tsx",
-    "site/lib/data.ts"
+    "cmd/tr/deploy.go",
+    "site/app/layout.tsx",
+    "site/components/site/features.tsx",
+    "site/components/site/hero.tsx"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "cf93a975-d13d-4386-81c9-b0b1f8224566",
-  "checkpoint_transcript_start": 1251,
-  "transcript_lines_at_start": 1251,
+  "transcript_identifier_at_start": "7b0b30e4-0dea-4b6f-86e6-f98dc1789c29",
+  "checkpoint_transcript_start": 1347,
+  "transcript_lines_at_start": 1347,
   "token_usage": {
-    "input_tokens": 8990,
-    "cache_creation_tokens": 1412767,
-    "cache_read_tokens": 4208984,
-    "output_tokens": 11757,
-    "api_call_count": 13
+    "input_tokens": 936,
+    "cache_creation_tokens": 752454,
+    "cache_read_tokens": 9155263,
+    "output_tokens": 17757,
+    "api_call_count": 22
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T17:12:02.513443Z",
-    "agent_lines": 60,
-    "human_added": 0,
-    "human_modified": 11,
+    "calculated_at": "2026-07-01T17:32:44.098541Z",
+    "agent_lines": 0,
+    "human_added": 225,
+    "human_modified": 3,
     "human_removed": 0,
-    "total_committed": 71,
-    "agent_percentage": 84.50704225352112
+    "total_committed": 225,
+    "agent_percentage": 0
   }
 }

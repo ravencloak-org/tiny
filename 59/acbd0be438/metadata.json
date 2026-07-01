@@ -5,6 +5,7 @@
   "branch": "main",
   "checkpoints_count": 2,
   "files_touched": [
+    "cmd/tr/deploy.go",
     "files (1)/CONTEXT.md",
     "files (1)/docs/adr/0001-self-custody-clearkey-no-hardware-drm.md",
     "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
@@ -20,8 +21,9 @@
     "files (1)/docs/adr/0012-no-device-fingerprinting.md",
     "internal/openapi/openapi.go",
     "internal/openapi/openapi_test.go",
-    "site/components/site/benchmark.tsx",
-    "site/lib/data.ts"
+    "site/app/layout.tsx",
+    "site/components/site/features.tsx",
+    "site/components/site/hero.tsx"
   ],
   "sessions": [
     {
@@ -47,10 +49,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 15711,
-    "cache_creation_tokens": 1494130,
-    "cache_read_tokens": 23097480,
-    "output_tokens": 49800,
-    "api_call_count": 60
+    "input_tokens": 7657,
+    "cache_creation_tokens": 833817,
+    "cache_read_tokens": 28043759,
+    "output_tokens": 55800,
+    "api_call_count": 69
   }
 }

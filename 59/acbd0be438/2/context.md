@@ -140,3 +140,16 @@ continue
 
 go ship it
 
+### Prompt 26
+
+<task-notification>
+<task-id>btp10qkqz</task-id>
+<summary>Monitor event: "v0.3.9 benchmark p99 release"</summary>
+<event>release v0.3.9: completed success</event>
+If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+</task-notification>
+
+### Prompt 27
+
+All of the above, and also check if it is available on homebrew and other package managers.
+
