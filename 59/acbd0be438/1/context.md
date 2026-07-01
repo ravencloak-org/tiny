@@ -142,3 +142,19 @@ yes go for epic
 
 yes cleanup
 
+### Prompt 31
+
+close the keycloak issues against the epic
+
+### Prompt 32
+
+continue
+
+### Prompt 33
+
+create worktress and use /caveman:caveman and /ponytail:ponytail and work on these issues and close them in parallel using agent teams
+
+### Prompt 34
+
+go for recomended
+
