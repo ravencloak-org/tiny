@@ -3,36 +3,30 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "c651ee02-cf8b-46ac-af2c-803058706c9a",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T15:57:46.93505Z",
+  "created_at": "2026-07-01T16:24:33.683998Z",
   "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
-    "files (1)/docs/adr/0009-peer-selection-proximity-uplink.md",
-    "files (1)/docs/adr/0010-operator-power-deindex-only-no-backdoor.md",
-    "files (1)/docs/adr/0011-multi-device-storage-pool.md",
-    "internal/api/middleware.go",
-    "internal/api/server.go",
-    "site/components/site/live-dashboard.tsx",
-    "site/components/site/use-cases.tsx"
+    "site/components/site/live-dashboard.tsx"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "881a7bfc-0d76-4dfe-90c2-f245ce782d73",
-  "checkpoint_transcript_start": 794,
-  "transcript_lines_at_start": 794,
+  "transcript_identifier_at_start": "dcb281cb-b70e-42fa-9e2f-91a916a181a3",
+  "checkpoint_transcript_start": 954,
+  "transcript_lines_at_start": 954,
   "token_usage": {
-    "input_tokens": 1195,
-    "cache_creation_tokens": 25431,
-    "cache_read_tokens": 7901539,
-    "output_tokens": 20556,
-    "api_call_count": 23
+    "input_tokens": 1575,
+    "cache_creation_tokens": 448566,
+    "cache_read_tokens": 5447921,
+    "output_tokens": 18113,
+    "api_call_count": 16
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T15:57:46.84997Z",
-    "agent_lines": 113,
-    "human_added": 0,
-    "human_modified": 50,
-    "human_removed": 97,
-    "total_committed": 163,
-    "agent_percentage": 69.32515337423312
+    "calculated_at": "2026-07-01T16:24:33.581493Z",
+    "agent_lines": 0,
+    "human_added": 75,
+    "human_modified": 39,
+    "human_removed": 0,
+    "total_committed": 75,
+    "agent_percentage": 0
   }
 }

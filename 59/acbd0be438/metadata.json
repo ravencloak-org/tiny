@@ -6,15 +6,10 @@
   "checkpoints_count": 3,
   "files_touched": [
     "files (1)/docs/adr/0009-peer-selection-proximity-uplink.md",
-    "files (1)/docs/adr/0010-operator-power-deindex-only-no-backdoor.md",
-    "files (1)/docs/adr/0011-multi-device-storage-pool.md",
     "files (1)/docs/adr/0012-no-device-fingerprinting.md",
-    "internal/api/middleware.go",
-    "internal/api/server.go",
     "internal/openapi/openapi.go",
     "internal/openapi/openapi_test.go",
-    "site/components/site/live-dashboard.tsx",
-    "site/components/site/use-cases.tsx"
+    "site/components/site/live-dashboard.tsx"
   ],
   "sessions": [
     {
@@ -40,10 +35,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 7133,
-    "cache_creation_tokens": 89138,
-    "cache_read_tokens": 22337615,
-    "output_tokens": 54688,
-    "api_call_count": 61
+    "input_tokens": 7513,
+    "cache_creation_tokens": 512273,
+    "cache_read_tokens": 19883997,
+    "output_tokens": 52245,
+    "api_call_count": 54
   }
 }
