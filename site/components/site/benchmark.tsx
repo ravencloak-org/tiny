@@ -8,14 +8,12 @@ import { Grid } from "@/components/charts/grid";
 import { benchmark } from "@/lib/data";
 import { SectionHeading } from "./section";
 
-const throughputData = [
-  { name: "TinyRaven", value: benchmark.tinyraven.throughput },
-  { name: "Tinybird", value: benchmark.tinybird.throughput },
-];
+const tr = benchmark.tinyraven;
 
-const latencyData = [
-  { name: "TinyRaven", value: benchmark.tinyraven.p95ms },
-  { name: "Tinybird", value: benchmark.tinybird.p95ms },
+const latency = [
+  { name: "p50", value: tr.p50ms },
+  { name: "p95", value: tr.p95ms },
+  { name: "p99", value: tr.p99ms },
 ];
 
 export function Benchmark() {
@@ -27,27 +25,63 @@ export function Benchmark() {
       <div className="mx-auto max-w-6xl px-6">
         <SectionHeading
           eyebrow="Benchmark"
-          title="Parity on performance, too"
-          description="Throughput and p95 latency, measured side by side. TinyRaven keeps pace with managed Tinybird on commodity hardware."
+          title="Measured, not marketed"
+          description="TinyRaven's own numbers on one commodity node — ingest throughput and end-to-end latency percentiles. No vendor head-to-head; we don't publish numbers we didn't measure."
         />
 
         <div className="mt-14 grid gap-6 lg:grid-cols-2">
-          <ChartCard
-            title="Throughput"
-            unit="events / sec"
-            data={throughputData}
-            fill="#a78bfa"
-            format={(v) => `${(v / 1000).toFixed(0)}k`}
-            note={`${benchmark.tinyraven.throughput.toLocaleString()} ev/s · ${benchmark.tinyraven.note}`}
-          />
-          <ChartCard
-            title="p95 latency"
-            unit="milliseconds (lower is better)"
-            data={latencyData}
-            fill="#818cf8"
-            format={(v) => `${v} ms`}
-            note={`TinyRaven ${benchmark.tinyraven.p95ms} ms vs Tinybird ${benchmark.tinybird.p95ms} ms`}
-          />
+          {/* Throughput — single measured figure */}
+          <div className="flex flex-col justify-center rounded-2xl border border-white/10 bg-zinc-950/40 p-8">
+            <span className="text-xs font-medium uppercase tracking-widest text-violet-300/80">
+              Ingest throughput
+            </span>
+            <div className="mt-4 flex items-baseline gap-2 font-mono">
+              <span className="text-5xl font-semibold text-zinc-100">
+                {(tr.throughput / 1e6).toFixed(2)}M
+              </span>
+              <span className="text-lg text-zinc-500">events / sec</span>
+            </div>
+            <p className="mt-5 text-sm leading-relaxed text-zinc-400">{tr.note}</p>
+          </div>
+
+          {/* Latency percentiles — p50 / p95 / p99 */}
+          <div className="rounded-2xl border border-white/10 bg-zinc-950/40 p-6">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-base font-medium text-zinc-100">
+                Latency percentiles
+              </h3>
+              <span className="text-xs text-zinc-500">milliseconds</span>
+            </div>
+
+            <div className="mt-2">
+              <BarChart
+                data={latency}
+                xDataKey="name"
+                aspectRatio="16 / 9"
+                barGap={0.5}
+                margin={{ top: 24, right: 16, bottom: 28, left: 44 }}
+              >
+                <Grid horizontal numTicksRows={4} />
+                <Bar dataKey="value" fill="#a78bfa" lineCap={6} />
+                <BarXAxis />
+                <BarYAxis maxLabels={5} />
+              </BarChart>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {latency.map((d) => (
+                <div
+                  key={d.name}
+                  className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
+                >
+                  <div className="text-xs text-zinc-400">{d.name}</div>
+                  <div className="mt-1 font-mono text-lg font-semibold text-zinc-100">
+                    {d.value} ms
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <p className="mt-8 text-center text-xs text-zinc-500">
@@ -55,62 +89,5 @@ export function Benchmark() {
         </p>
       </div>
     </section>
-  );
-}
-
-interface ChartCardProps {
-  title: string;
-  unit: string;
-  data: { name: string; value: number }[];
-  fill: string;
-  format: (v: number) => string;
-  note: string;
-}
-
-function ChartCard({ title, unit, data, fill, format, note }: ChartCardProps) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-zinc-950/40 p-6">
-      <div className="flex items-baseline justify-between">
-        <h3 className="text-base font-medium text-zinc-100">{title}</h3>
-        <span className="text-xs text-zinc-500">{unit}</span>
-      </div>
-
-      <div className="mt-2">
-        <BarChart
-          data={data}
-          xDataKey="name"
-          aspectRatio="16 / 9"
-          barGap={0.45}
-          margin={{ top: 24, right: 16, bottom: 28, left: 44 }}
-        >
-          <Grid horizontal numTicksRows={4} />
-          <Bar dataKey="value" fill={fill} lineCap={6} />
-          <BarXAxis />
-          <BarYAxis maxLabels={5} />
-        </BarChart>
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        {data.map((d, i) => (
-          <div
-            key={d.name}
-            className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
-          >
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ background: i === 0 ? fill : "#52525b" }}
-              />
-              {d.name}
-            </div>
-            <div className="mt-1 font-mono text-lg font-semibold text-zinc-100">
-              {format(d.value)}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <p className="mt-4 text-xs text-zinc-500">{note}</p>
-    </div>
   );
 }

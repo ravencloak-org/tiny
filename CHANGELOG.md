@@ -4,6 +4,11 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] — 2026-07-01
+
+### Changed
+- Benchmark section rebuilt to TinyRaven's own measured numbers: ingest throughput (1.51M events/s) + latency percentiles **p50/p95/p99** (19.8 / 79 / 178 ms), measured locally (50 clients, batch 1000, 15s, 22.7M events). Dropped the illustrative Tinybird head-to-head — no vendor numbers we didn't measure.
+
 ## [0.3.8] — 2026-07-01
 
 ### Changed
