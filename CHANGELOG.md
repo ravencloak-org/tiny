@@ -4,6 +4,12 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] — 2026-07-01
+
+### Added
+- Live demo links on `/use-cases`: clickable prod endpoints (`tiny-api.ravencloak.org`) backed by a read-only demo token (scope `READ:top_pages`, `READ:views_over_time` — 403 on anything else), returning real JSON from 300 seeded events.
+- Dashboards demo baked into the API image (`/project`) so its pipes survive container redeploys; table + data persist in the ClickHouse volume, token in Redis AOF.
+
 ## [0.3.4] — 2026-07-01
 
 ### Fixed

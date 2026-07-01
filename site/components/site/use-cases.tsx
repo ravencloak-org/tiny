@@ -130,6 +130,21 @@ const receipt = [
   { text: '  "rows":5,"rows_before_limit_at_least":6}', variant: "added" as const },
 ];
 
+// Live prod endpoints, read-only demo token (scope: READ:top_pages,
+// READ:views_over_time — verified 403 on anything else). Public by design.
+const DEMO_API = "https://tiny-api.ravencloak.org/v0/pipes";
+const DEMO_TOKEN = "tr_rulT-71_qYOtUG-i6MVH9LnKNe5Cucg5";
+const liveLinks = [
+  {
+    label: "top_pages.json?limit=5",
+    href: `${DEMO_API}/top_pages.json?limit=5&token=${DEMO_TOKEN}`,
+  },
+  {
+    label: "views_over_time.json",
+    href: `${DEMO_API}/views_over_time.json?token=${DEMO_TOKEN}`,
+  },
+];
+
 export function UseCases() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24">
@@ -176,6 +191,31 @@ export function UseCases() {
             dashboard already parses. Only <code className="text-violet-300">TINYBIRD_HOST</code>{" "}
             changes.
           </p>
+          {/* Live, clickable — hits the real prod API with a read-only demo token */}
+          <div className="mt-6 rounded-lg border border-white/10 bg-black/20 p-4">
+            <p className="text-xs font-medium uppercase tracking-widest text-emerald-300/80">
+              Try it live
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {liveLinks.map(({ label, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group flex items-center gap-2 font-mono text-xs text-zinc-300 transition-colors hover:text-violet-300"
+                >
+                  <span className="text-emerald-400">GET</span>
+                  <span className="truncate">{label}</span>
+                  <ArrowRightIcon className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
+                </a>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-zinc-500">
+              Real prod endpoint · read-only demo token · returns live JSON.
+            </p>
+          </div>
+
           <div className="mt-6 flex flex-wrap gap-3">
             <Button
               render={
