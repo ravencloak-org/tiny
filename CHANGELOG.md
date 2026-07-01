@@ -4,6 +4,11 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] — 2026-07-01
+
+### Fixed
+- `/use-cases` live dashboard now uses Recharts instead of the bespoke visx chart set, whose `BarYAxis` rendered category labels on the Y axis and overflowed the card. Clean fixed-height bar charts with numeric Y axis, dark tooltip, rounded bars.
+
 ## [0.3.6] — 2026-07-01
 
 ### Added
