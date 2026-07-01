@@ -3,10 +3,10 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 3,
+  "checkpoints_count": 8,
   "files_touched": [
     "files (1)/CONTEXT.md",
-    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
+    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
     "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md",
     "files (1)/docs/adr/0009-peer-selection-proximity-uplink.md",
     "files (1)/docs/adr/0010-operator-power-deindex-only-no-backdoor.md",
@@ -42,10 +42,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 6531,
-    "cache_creation_tokens": 77910,
-    "cache_read_tokens": 20703236,
-    "output_tokens": 46960,
-    "api_call_count": 56
+    "input_tokens": 7805,
+    "cache_creation_tokens": 96718,
+    "cache_read_tokens": 24347038,
+    "output_tokens": 66491,
+    "api_call_count": 69
   }
 }

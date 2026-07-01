@@ -74,3 +74,27 @@ also why no timescale db, since clickhouse is olap db we can use timescale db to
 
 my bad, proceed with central catalogue, viewrr is primarily a svod, so users should be able to use it as an alternative for netflix and others. so everything downloaded by everyone in the p2p mesh should contribute to the central catalgoue that the whole point, no central media server, decentralized media files, centralized catalgoue search powered by paradedb
 
+### Prompt 17
+
+go for recomended, like we discussed priority for media file conflicts will be resolved based on location short codes plus upload speeds
+
+### Prompt 18
+
+no peers bytes dont become title, Let's say there is a movie title called Interstellar and user A is searching for it, and in the catalog the movie is owned by multiple people for the same format. Based on which user is closest to the requesting user by the short code, plus whoever has the fastest upload speed, should be selected, and the files should be pulled from that particular server.
+
+### Prompt 19
+
+accept for MVP, grill DMCA next
+
+### Prompt 20
+
+nah I should not be able to delete anything, but if someone hosts child porn or titles that are not indexed via tmdb then auto make it private. also for same login accross multiple devices, each device installation should declare the free stoarage and min 20% storage dedicated to viewrr. then these storage disk from each device forms a pool under which the user hosts their private and public catalogue. I should not be legally liable, I should have no backdoor or wormhole to hack the system, it s...
+
+### Prompt 21
+
+lock this, backup tier included
+
+### Prompt 22
+
+also lets use chrome fingerprint to prevent multiple dummy accounts being created
+

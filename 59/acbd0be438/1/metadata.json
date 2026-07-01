@@ -3,32 +3,36 @@
   "checkpoint_id": "59acbd0be438",
   "session_id": "ba164d76-ad07-4ce5-b0f5-c0e229ae6f6c",
   "strategy": "manual-commit",
-  "created_at": "2026-07-01T15:38:16.57309Z",
+  "created_at": "2026-07-01T15:57:54.126385Z",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 6,
   "files_touched": [
     "files (1)/CONTEXT.md",
-    "files (1)/docs/adr/0005-neutral-infrastructure-user-hosted.md",
-    "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md"
+    "files (1)/docs/adr/0002-compose-desktop-libvlc-drop-electron.md",
+    "files (1)/docs/adr/0008-central-catalog-mesh-contributed.md",
+    "files (1)/docs/adr/0009-peer-selection-proximity-uplink.md",
+    "files (1)/docs/adr/0010-operator-power-deindex-only-no-backdoor.md",
+    "files (1)/docs/adr/0011-multi-device-storage-pool.md",
+    "site/components/site/live-dashboard.tsx"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "94dcc919-ec32-4530-9b68-6eaf6a8c5d7a",
-  "checkpoint_transcript_start": 318,
-  "transcript_lines_at_start": 318,
+  "transcript_identifier_at_start": "85846d0d-7fb1-4af8-bcc9-47bbc63e2782",
+  "checkpoint_transcript_start": 353,
+  "transcript_lines_at_start": 353,
   "token_usage": {
-    "input_tokens": 275,
-    "cache_creation_tokens": 4429,
-    "cache_read_tokens": 1026213,
-    "output_tokens": 6125,
-    "api_call_count": 4
+    "input_tokens": 1549,
+    "cache_creation_tokens": 23237,
+    "cache_read_tokens": 4670015,
+    "output_tokens": 25656,
+    "api_call_count": 17
   },
   "initial_attribution": {
-    "calculated_at": "2026-07-01T15:38:16.527298Z",
-    "agent_lines": 0,
-    "human_added": 0,
-    "human_modified": 26,
-    "human_removed": 145,
-    "total_committed": 26,
-    "agent_percentage": 0
+    "calculated_at": "2026-07-01T15:57:54.064364Z",
+    "agent_lines": 95,
+    "human_added": 27579,
+    "human_modified": 356,
+    "human_removed": 0,
+    "total_committed": 28030,
+    "agent_percentage": 0.3389225829468427
   }
 }
