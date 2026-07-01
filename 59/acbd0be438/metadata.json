@@ -3,7 +3,7 @@
   "checkpoint_id": "59acbd0be438",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 5,
+  "checkpoints_count": 4,
   "files_touched": [
     "files (1)/docs/adr/p2p-0001-self-custody-clearkey-no-hardware-drm.md",
     "files (1)/docs/adr/p2p-0002-compose-desktop-libvlc-drop-electron.md",
@@ -44,7 +44,8 @@
     "site/components/charts/use-highlight-segment.ts",
     "site/components/charts/x-axis.tsx",
     "site/components/shimmering-text.tsx",
-    "site/components/site/live-dashboard.tsx"
+    "site/components/site/benchmark.tsx",
+    "site/lib/data.ts"
   ],
   "sessions": [
     {
@@ -70,10 +71,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 10575,
-    "cache_creation_tokens": 617763,
-    "cache_read_tokens": 26856188,
-    "output_tokens": 81289,
-    "api_call_count": 72
+    "input_tokens": 18214,
+    "cache_creation_tokens": 1507800,
+    "cache_read_tokens": 23639492,
+    "output_tokens": 65252,
+    "api_call_count": 65
   }
 }
