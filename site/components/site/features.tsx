@@ -18,7 +18,7 @@ type Feature = {
 const features: Feature[] = [
   {
     title: "Drop-in API parity",
-    body: "100% Tinybird API surface. Existing client code works by changing only TINYBIRD_HOST — no rewrites, no SDK swaps.",
+    body: "Speaks Tinybird's /v0 API. Existing client code works by changing only TINYBIRD_HOST — same .datasource/.pipe files, no rewrites, no SDK swaps.",
     Icon: PlugIcon,
   },
   {

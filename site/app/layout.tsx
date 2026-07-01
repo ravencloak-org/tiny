@@ -15,12 +15,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TinyRaven — Tinybird's API, your servers",
   description:
-    "Open-source, self-hosted, drop-in alternative to Tinybird. Written in Go over OSS ClickHouse with 100% Tinybird API parity. Apache 2.0.",
+    "Open-source, self-hosted, drop-in alternative to Tinybird. Written in Go over OSS ClickHouse, speaking Tinybird's /v0 API and .datasource/.pipe files. Apache 2.0.",
   metadataBase: new URL("https://tiny.ravencloak.org"),
   openGraph: {
     title: "TinyRaven — Tinybird's API, your servers",
     description:
-      "Self-hosted real-time analytics. 100% Tinybird API parity in a single Go binary. Apache 2.0.",
+      "Self-hosted real-time analytics. Drop-in Tinybird /v0 API in a single Go binary. Apache 2.0.",
     type: "website",
   },
 };

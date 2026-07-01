@@ -4,6 +4,14 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.10] — 2026-07-01
+
+### Fixed
+- `tr deploy` bootstraps its ClickHouse session against `default` and lets `deploy.Run` create + re-scope onto the target DB, fixing first-deploy `UNKNOWN_DATABASE` on a fresh workspace (#71).
+
+### Changed
+- Site copy: dropped "100% API parity" claims (hero, features, SEO metadata) in favor of honest "speaks Tinybird's /v0 API + .datasource/.pipe files" — matches the /use-cases coverage table.
+
 ## [0.3.9] — 2026-07-01
 
 ### Changed

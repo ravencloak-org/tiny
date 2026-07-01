@@ -57,9 +57,13 @@ func runDeploy(ctx context.Context, cfg config.Config, dir string, allowBreaking
 	ch, err := clickhouse.New(clickhouse.Config{
 		HTTPURL:    cfg.CHHTTPURL,
 		NativeAddr: cfg.CHNativeAddr,
-		Database:   cfg.CHDatabase, // deploy creates + targets `db` via Options.Database
-		User:       cfg.CHUser,
-		Password:   cfg.CHPassword,
+		// Bootstrap the session against an always-present DB. deploy.Run issues
+		// CREATE DATABASE for the target `db` (ADR 0007) then re-scopes via
+		// WithDatabase — pinning the session to a not-yet-created `db` fails with
+		// UNKNOWN_DATABASE on first deploy (#71).
+		Database: "default",
+		User:     cfg.CHUser,
+		Password: cfg.CHPassword,
 	})
 	if err != nil {
 		return err

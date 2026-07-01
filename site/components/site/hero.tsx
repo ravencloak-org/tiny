@@ -37,8 +37,9 @@ export function Hero() {
 
           <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-zinc-400">
             TinyRaven is a self-hosted, drop-in alternative to Tinybird —
-            written in Go over OSS ClickHouse with 100% API parity. Point your
-            existing client at a new host and keep shipping.
+            written in Go over OSS ClickHouse, speaking the same <code className="text-violet-300">/v0</code> API
+            and <code className="text-violet-300">.datasource</code>/<code className="text-violet-300">.pipe</code> files.
+            Point your existing client at a new host and keep shipping.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
