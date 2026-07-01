@@ -58,3 +58,15 @@ no lets go for option two only, the platform is not responsible for the legal ri
 
 confirm all
 
+### Prompt 13
+
+yes fix, also we are using public private asymettric algorithm right? can we reduce the code by using bouncy castle or something
+
+### Prompt 14
+
+why not pgbouncer, it's for hikaricp. also why no catalogue, we need a central catalogue that anyone can search this was captured in the adr.
+
+### Prompt 15
+
+also why no timescale db, since clickhouse is olap db we can use timescale db to cache any timescale data for faster returns right? most of these timescale db doesnt change just keeps on appending like WAL
+
