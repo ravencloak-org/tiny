@@ -4,10 +4,11 @@ import { links } from "@/lib/data";
 import { GitHubIcon } from "./icons";
 
 const navItems = [
-  { label: "Features", href: "#features" },
-  { label: "Migration", href: "#migration" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Benchmark", href: "#benchmark" },
+  { label: "Features", href: "/#features" },
+  { label: "Use cases", href: "/use-cases" },
+  { label: "Migration", href: "/#migration" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "Benchmark", href: "/#benchmark" },
 ];
 
 export function Nav() {

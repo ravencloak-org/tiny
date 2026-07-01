@@ -1,0 +1,8 @@
+NODE endpoint
+SQL >
+    SELECT toStartOfHour(timestamp) AS hour, count() AS views
+    FROM web_events
+    WHERE timestamp >= {{DateTime(start, '2020-01-01 00:00:00')}}
+    GROUP BY hour
+    ORDER BY hour
+TYPE endpoint

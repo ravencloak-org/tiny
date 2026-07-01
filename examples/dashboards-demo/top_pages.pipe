@@ -1,0 +1,8 @@
+NODE endpoint
+SQL >
+    SELECT path, count() AS views, uniq(user_id) AS visitors
+    FROM web_events
+    GROUP BY path
+    ORDER BY views DESC
+    LIMIT {{Int32(limit, 10)}}
+TYPE endpoint

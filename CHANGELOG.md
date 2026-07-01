@@ -4,6 +4,18 @@ All notable changes to TinyRaven are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] — 2026-07-01
+
+### Added
+- Marketing site: `/use-cases` page mapping TinyRaven to Tinybird's eight documented use cases with honest coverage badges (Live / Via ClickHouse / Partial) and a demonstrated user-facing-dashboards spotlight using real demo output.
+- `examples/dashboards-demo/`: reproducible drop-in demo (Tinybird dashboards use case) — `.datasource`/`.pipe` files, `run.sh` (Apple `container` local runtime), sample events, and verified receipts.
+
+### Fixed
+- Nav section links now resolve from any route (`/#features` form) and expose the new Use cases page.
+
+### Known issues
+- `tr deploy` cannot bootstrap a missing target database (native client pins the session to it → `UNKNOWN_DATABASE`); pre-create the DB. See #71. Prod compose is unaffected (ClickHouse image creates `tr_main`).
+
 ## [0.3.2] — 2026-06-30
 
 ### Changed

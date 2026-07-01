@@ -1,0 +1,10 @@
+SCHEMA >
+    timestamp DateTime,
+    user_id String,
+    path String,
+    country String,
+    device String
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "(path, timestamp)"
+ENGINE_PARTITION_KEY "toYYYYMM(timestamp)"
