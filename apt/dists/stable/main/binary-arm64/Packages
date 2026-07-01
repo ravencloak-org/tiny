@@ -1,13 +1,13 @@
 Package: tinyraven
-Version: 0.3.9
+Version: 0.3.10
 Architecture: arm64
 Maintainer: Ravencloak <oss@ravencloak.org>
 Installed-Size: 24256
-Filename: pool/main/tinyraven_0.3.9_linux_arm64.deb
-Size: 8184482
-MD5sum: 5ba6224e475d5de56aaf18acf4ed94ad
-SHA1: dd8a423ba965e8fb2c72f3a8b9d6a5761b59f5bc
-SHA256: 23290793c0a857917479cf6c7dfb8378ab65abac4fe95c30764b865a88215bc9
+Filename: pool/main/tinyraven_0.3.10_linux_arm64.deb
+Size: 8184462
+MD5sum: f753dd6f537c1560702f39caadfdabe9
+SHA1: ac4f4b87e0c9bda30d5451eadecc9d98e793463d
+SHA256: fbd0835188076f0a2b1487e89e4fbdb7a357ffae219fc9b26972dc7a6e143b15
 Priority: optional
 Homepage: https://github.com/ravencloak-org/tiny
 Description: TinyRaven — open-source, self-hosted, drop-in alternative to Tinybird.
